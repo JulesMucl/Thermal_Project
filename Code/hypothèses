@@ -1,0 +1,21 @@
+#Contient l ensemble des hypothèses posées :
+
+# A. Hypothèses sur le fluide de refroidissement. 
+#     1 : Le fluide de refroidissement est de l'eau. L'eau est directement piochée depuis la rivière voisine. 
+#     2 : En été, eau prise à 8°C.
+#     3 : Norme environnementale, max. 30°. -> Marge : 28°C.
+
+# B. Hypothèses sur le condenseur : 
+#     1 : L état 5 a un x_5 >= 0.88 pour respecter normes turbines (pour ne pas abimer trop la turbine). 
+#     2 : Le condenseur possède un pinch  T_pinch_cd = 0°C.
+#     3 : L état après le condenseur est liquide saturé : x_6 = 0.
+#     4 : Il y a un écart de température T_cd_subcool entre l état saturé et l état sous-refroidit de 1°C.
+
+# C. Hypothèses sur les échangeurs de chaleurs :
+#     1 : Les échangeurs de chaleurs sont parfaits. Donc, pas de pertes de charges = pas de pertes de pression. Echangeurs de chaleur isobare. 
+#     2 : L état du fluide du cycle qui entre dans l échangeur (état 1 ou 2) est liquide saturé car présence de pompes en amont. 
+#     3 : Les échangeurs de chaleurs sont des échangeurs de chaleurs adiabatique avec l extérieur. Il n y a pas d apport /de pertes d énergie autre que entre le fluide chauffant et le fluide du cycle. 
+
+# D. Hypothèses sur la turbine :
+#     1 : La température d entrée en 3 et 4 est connue avec la température maximale supportable pour les matériaux. Donc, limite technologique.
+#     2 : La pression d entrée dans la turbine est 3 est connue car pression maximale admissible point de vue technologique. 
