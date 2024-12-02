@@ -14,6 +14,8 @@ from math import log
 #=============Mes imports ============
 
 from Tools.Pump import Pump1, Pump2
+from Tools.Evaporator import Evaporator_I
+
 
 
 
@@ -22,58 +24,60 @@ class ORC(object):
     def __init__(self,inputs,parameters,display):
 
         self.display             = display
+
+        # HOT Fluid
+        self.hot_fluid           = parameters['hot_fluid']
+        self.T_8                 = parameters['T_8']
+        self.T_7                 = parameters['T_7']
+        self.T_9                 = parameters['T_9'] 
+        self.T_pinch_ex_I        = parameters['T_pinch_ex_I']
+        self.T_pinch_ex_II       = parameters['T_pinch_ex_II']   
+        self.p_9                 = parameters['p_9']
+        self.dot_m_ex            = parameters['dot_m_ex']   # mass flow du fluid chaud  10 kg/s
+
+        # Cold Fluid
+        self.cold_fluid          = parameters['cold_fluid']
+        self.T_10                = parameters['T_10']
+        self.T_11                = parameters['T_11']
+        
+        # Etat 3
         self.T_max               = parameters['T_max']
-        self.p_3                 = parameters['p_3']
-        self.r_pump_1            = parameters['r_pump_1'] # Pour moi on peut pas les imposer !!!!
-        self.r_pump_2            = parameters['r_pump_2'] # Pour moi on peut pas les imposer !!!! Car redondant avec d'aures infos -> on va être bloqué ! 
+
+        # General 
         self.fluid               = parameters['fluid']
         self.k_cc_ex1            = parameters['k_cc_ex1']
         self.k_cc_ex2            = parameters['k_cc_ex2']
-        self.T_cold_fluid_in     = parameters['T_cold_fluid_in']
-        self.T_cold_fluid_out    = parameters['T_cold_fluid_out']
-        self.cold_fluid          = parameters['cold_fluid']
-        self.hot_fluid           = parameters['hot_fluid']
-        self.dot_m_ex            = parameters['dot_m_ex']   # mass flow du fluid chaud  10 kg/s
-        self.T_hot_fluid_in_II   = parameters['T_hot_fluid_in_II'] 
-        self.p_hot_fluid         = parameters['p_hot_fluid']
+
+        # Pump
         self.eta_pump_1          = parameters['eta_pump_1']
         self.eta_pump_2          = parameters['eta_pump_2']
         self.T_cd_subcool        = parameters['T_cd_subcool']
-
-
-        # Doute de la méthodologie - Voir TODO : moi aussi je suis pas sure du pinch.
-        self.T_pinch_evap_I   = parameters['T_pinch_evap_I']
-
-        
-        
-       
-
-        self.T_pinch_ex = 1
-
 
         # ETAT REF
         self.p_ref, self.T_ref = parameters['p_ref'],   parameters['T_ref']
         self.h_ref = PropsSI('H','P',self.p_ref,'T',self.T_ref,self.fluid)
         self.s_ref = PropsSI('S','P',self.p_ref,'T',self.T_ref,self.fluid)
 
-       
-    
         # Contraintes
-        self.x5_lim = 0.88
-        self.x6 = 0
-        self.T_7 = self.T_hot_fluid_in_II
-        self.p_7 = self.p_hot_fluid
+        self.x5_lim    = 0.88
+        self.x6        = 0
+        self.p_7       = self.p_9
+
+        # Impose
+        self.m_dot_tot = parameters['m_dot_tot']
+        self.X_I       = 0.5
+        self.X_II      = 0.5
+
+        self.dot_m_I = self.m_dot_tot * self.X_I
+        self.dot_m_II = self.m_dot_tot * self.X_II
+
+        # Guess
+        self.p_3_guess = parameters['p_3_guess']
+
+
 
        
-    def T_pinch_cd(self,T5, T_cold_in, T_cold_out):
-        """
-        Retourne la température T_pinch du condensateur
-        Ce fait via des itérations
-
-        A faire 
-        """
-        return 1
-
+ 
     def exergie(self,h_i,s_i):
 
         return ( h_i - self.h_ref ) - self.T_ref * ( s_i - self.s_ref ) 
@@ -113,32 +117,30 @@ class ORC(object):
 
         #region ETATS
 
-            #region ETAT 7
-        # Etat 7 connu car données d'entrée du problème. 
+            #region ETAT 7 connu car données d'entrée du problème
+        
         self.h_7 = PropsSI("H","T",self.T_7,"P",self.p_7,self.hot_fluid)
         self.s_7 = PropsSI("S","T",self.T_7,"P",self.p_7,self.hot_fluid)
         self.e_7 = self.exergie(self.h_7,self.s_7)
         self.x_7 = PropsSI("Q","T",self.T_7,"P",self.p_7,self.hot_fluid)
             #endregion etat 7
 
+             #region ETAT 1
+        # A CHANGER
+        self.p_1 = 6*10**5
+        self.T_1 = PropsSI("T","P",self.p_1,"Q",0,self.fluid)
+             #endregion etat 1
+
+
             # region ETAT 6
-        self.T_6 = self.T_cold_fluid_in + 1 #self.T_pinch_cd()  # Pas sure !!!!
-        self.p_6 = PropsSI("P","T",self.T_6,"Q",self.x6,self.fluid)
-        self.h_6 = PropsSI("H","T",self.T_6,"P",self.p_6,self.fluid)
-        self.s_6 = PropsSI("S","T",self.T_6,"P",self.p_6,self.fluid)
-        self.e_6 = self.exergie(self.h_6,self.s_6)
-        #endregion etat6
+        # self.T_6 = self.T_10 + 1 #self.T_pinch_cd()  # Pas sure !!!!
+        # self.p_6 = PropsSI("P","T",self.T_6,"Q",self.x6,self.fluid)
+        # self.h_6 = PropsSI("H","T",self.T_6,"P",self.p_6,self.fluid)
+        # self.s_6 = PropsSI("S","T",self.T_6,"P",self.p_6,self.fluid)
+        # self.e_6 = self.exergie(self.h_6,self.s_6)
+            #endregion etat6
 
 
-        # Pour moi on peut pas définir les rapports d epression dans les pompes. 
-        #     #region ETAT 1
-        # self.p_1 = self.p_6 * self.r_pump_1
-        # self.pump_1 = Pump1(self)  # self.p_in, self.p_out, self.T_in, self.eta_pump = params
-        # self.T_1 = self.pump_1.evaluate_T_out()
-        # self.h_1 = PropsSI("H","T",self.T_1,"P",self.p_1,self.fluid)
-        # self.s_1 = PropsSI("S","T",self.T_1,"P",self.p_1,self.fluid)
-        # self.e_1 = self.exergie(self.h_1,self.s_1)
-        #     #endregion etat 1
 
         #     #region ETAT 2
         # self.p_2 = self.p_1 * self.r_pump_2
@@ -150,16 +152,21 @@ class ORC(object):
 
             #endregion etat2
 
-            # region ETAT 3
-        self.T_3 = self.T_max
-        self.h_3 = PropsSI("H","T",self.T_3,"P",self.p_3,self.fluid)
+             # region ETAT 3
+
+        self.evaporator = Evaporator_I(self)
+        self.p_3 = self.evaporator.Pressure()
+
+        self.T_3 = PropsSI("T","P",self.p_3,"Q",1,self.fluid)
+        print('T3 === ',self.T_3-273.15,'°C')
+        print("p3 === ",self.p_3/1000,"kPa")
+        self.h_3 = PropsSI("H","Q",0,"P",self.p_3,self.fluid)
         self.s_3 = PropsSI("S","T",self.T_3,"P",self.p_3,self.fluid)
         self.e_3 = self.exergie(self.h_3,self.s_3)
-        self.x_3 = PropsSI("Q","T",self.T_3,"P",self.p_3,self.fluid)
 
-            # endregion etat 3
+             # endregion etat 3
 
-            # region ETAT 5
+             # region ETAT 5
         self.T_5 = self.T_6 + self.T_cd_subcool
 
         # Via le rendement isentropique de la turbine : 
@@ -176,7 +183,7 @@ class ORC(object):
             # endregion etat 5
 
             # region ETAT 4
-            self.T_4 = self.T_max
+        self.T_4 = self.T_max
 
 
 
