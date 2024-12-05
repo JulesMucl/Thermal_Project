@@ -39,10 +39,13 @@ class ORC(object):
         self.eta_pump_1          = parameters['eta_pump_1']
         self.eta_pump_2          = parameters['eta_pump_2']
         self.T_cd_subcool        = parameters['T_cd_subcool']
-
-
-        # Doute de la méthodologie - Voir TODO : moi aussi je suis pas sure du pinch.
-        self.T_pinch_evap_I   = parameters['T_pinch_evap_I']
+        self.T_surchauffe        = parameters['T_surchauffe']
+        self.eta_is_T            = parameters['eta_is_T']
+        self.m_tot               = parameters['m_tot']
+        self.m_dot_CF            = parameters['m_dot_CF']
+        self.T_10                = parameters['T_10']
+        self.T_11                = parameters['T_11']
+        self.p_CF                = parameters['p_CF']
 
         
         
@@ -121,73 +124,151 @@ class ORC(object):
         self.x_7 = PropsSI("Q","T",self.T_7,"P",self.p_7,self.hot_fluid)
             #endregion etat 7
 
-            # region ETAT 6
-        self.T_6 = self.T_cold_fluid_in + 1 #self.T_pinch_cd()  # Pas sure !!!!
-        self.p_6 = PropsSI("P","T",self.T_6,"Q",self.x6,self.fluid)
-        self.h_6 = PropsSI("H","T",self.T_6,"P",self.p_6,self.fluid)
-        self.s_6 = PropsSI("S","T",self.T_6,"P",self.p_6,self.fluid)
-        self.e_6 = self.exergie(self.h_6,self.s_6)
-        #endregion etat6
 
+            #region ETAT 8
 
-        # Pour moi on peut pas définir les rapports d epression dans les pompes. 
-        #     #region ETAT 1
-        # self.p_1 = self.p_6 * self.r_pump_1
-        # self.pump_1 = Pump1(self)  # self.p_in, self.p_out, self.T_in, self.eta_pump = params
-        # self.T_1 = self.pump_1.evaluate_T_out()
-        # self.h_1 = PropsSI("H","T",self.T_1,"P",self.p_1,self.fluid)
-        # self.s_1 = PropsSI("S","T",self.T_1,"P",self.p_1,self.fluid)
-        # self.e_1 = self.exergie(self.h_1,self.s_1)
-        #     #endregion etat 1
+            #endregion etat 8
 
-        #     #region ETAT 2
-        # self.p_2 = self.p_1 * self.r_pump_2
-        # self.pump_2 = Pump2(self)
-        # self.T_2 = self.pump_2.evaluate_T_out()
-        # self.h_2 = PropsSI("H","T",self.T_2,"P",self.p_2,self.fluid)
-        # self.s_2 = PropsSI("S","T",self.T_2,"P",self.p_2,self.fluid)
-        # self.e_2 = self.exergie(self.h_2,self.s_2)
-
-            #endregion etat2
-
-            # region ETAT 3
-        self.T_3 = self.T_max
-        self.h_3 = PropsSI("H","T",self.T_3,"P",self.p_3,self.fluid)
-        self.s_3 = PropsSI("S","T",self.T_3,"P",self.p_3,self.fluid)
-        self.e_3 = self.exergie(self.h_3,self.s_3)
-        self.x_3 = PropsSI("Q","T",self.T_3,"P",self.p_3,self.fluid)
-
-            # endregion etat 3
-
-            # region ETAT 5
-        self.T_5 = self.T_6 + self.T_cd_subcool
-
-        # Via le rendement isentropique de la turbine : 
-        self.s_5s = self.s_3
-        self.x_5s = PropsSI("Q","T",self.T_5,"S",self.s_5s,self.fluid)
-        self.h_5s = PropsSI("H","T",self.T_5,"Q",self.x_5s,self.fluid)
-        self.h_5 = self.h_3 - (self.h_3 - self.h_5s) * self.eta_is_HP
-        self.s_5 = PropsSI("S","T",self.T_5,"H",self.h_5,self.fluid)
-        self.e_5 = self.exergie(self.h_5,self.s_5)
-        self.x_5 = PropsSI("Q","T",self.T_5,"H",self.h_5,self.fluid)
-        if(self.x_5 < self.x5_lim):
-            print("Error : x5 < x5_lim. Too much liquid in the turbine")
         
-            # endregion etat 5
+        
 
-            # region ETAT 4
-            self.T_4 = self.T_max
+        # On pose les pressions en premier guess
+        def cycle(p_1_guess, p_2_guess, p_5_guess) : 
 
+            self.T_3 = self.T_surchauffe + PropsSI("T","P",p_2_guess,"Q",1,self.fluid)
+            self.T_4 = self.T_surchauffe + PropsSI("T","P",p_1_guess,"Q",1,self.fluid)
+            self.T_6 = - self.T_cd_subcool + PropsSI("T","P",p_5_guess,"Q",0,self.fluid)
+
+            #region ETAT 3
+            self.p_3 = self.p_2_guess
+            self.h_3 = PropsSI("H","P",self.p_2_guess,"T",self.T_3,self.fluid)
+            self.s_3 = PropsSI("S","P",self.p_2_guess,"T",self.T_3,self.fluid)
+            self.e_3 = self.exergie(self.h_3,self.s_3)
+            self.x_3 = PropsSI("Q","P",self.p_2_guess,"T",self.T_3,self.fluid)
+            #endregion etat 3
+
+            #region ETAT 4
+            self.p_4 = self.p_1_guess
+            self.h_4 = PropsSI("H","P",self.p_1_guess,"T",self.T_4,self.fluid)
+            self.s_4 = PropsSI("S","P",self.p_1_guess,"T",self.T_4,self.fluid)
+            self.e_4 = self.exergie(self.h_4,self.s_4)
+            self.x_4 = PropsSI("Q","P",self.p_1_guess,"T",self.T_4,self.fluid)
+            #endregion etat 4
+
+            #region ETAT 6
+            self.p_6 = self.p_5_guess
+            self.h_6 = PropsSI("H","P",self.p_5_guess,"T",self.T_6,self.fluid)
+            self.s_6 = PropsSI("S","P",self.p_5_guess,"T",self.T_6,self.fluid)
+            self.e_6 = self.exergie(self.h_6,self.s_6)
+            self.x_6 = PropsSI("Q","P",self.p_5_guess,"T",self.T_6,self.fluid)
+            #endregion etat 6
+
+            #region ETAT 5
+            self.h_5 = self.m_dot_CF/self.m_tot * (self.h_10 - self.h_11) + self.h_6
+            self.s_5 = PropsSI("S","P",self.p_5_guess,"H",self.h_5,self.fluid)
+            self.e_5 = self.exergie(self.h_5,self.s_5)
+            self.x_5 = PropsSI("Q","P",self.p_5_guess,"H",self.h_5,self.fluid)
+            self.T_5 = PropsSI("T","P",self.p_5_guess,"H",self.h_5,self.fluid)
+            #endregion etat 5
+
+            # Via turbine : 
+            #region ETAT 3_PRIME
+            self.h_3_prime_s = PropsSI("H","P",self.p_5_guess,"S",self.s_3,self.fluid)
+            self.h_3_prime = self.h_3 - self.eta_is_T * (self.h_3 - self.h_3_prim_s)
+            self.T_3_prime = PropsSI("T","P",self.p_5_guess,"H",self.h_3_prime,self.fluid)
+            self.s_3_prime = PropsSI("S","P",self.p_5_guess,"H",self.h_3_prime,self.fluid)
+            self.e_3_prime = self.exergie(self.h_3_prime,self.s_3_prime)
+            self.x_3_prime = PropsSI("Q","P",self.p_5_guess,"H",self.h_3_prime,self.fluid)
+            #endregion etat 3_prime
+
+            #region ETAT 4_PRIME
+            self.h_4_prime_s = PropsSI("H","P",self.p_5_guess,"S",self.s_4,self.fluid)
+            self.h_4_prime = self.h_4 - self.eta_is_T * (self.h_4 - self.h_4_prim_s)
+            self.T_4_prime = PropsSI("T","P",self.p_5_guess,"H",self.h_4_prime,self.fluid)
+            self.s_4_prime = PropsSI("S","P",self.p_5_guess,"H",self.h_4_prime,self.fluid)
+            self.e_4_prime = self.exergie(self.h_4_prime,self.s_4_prime)
+            self.x_4_prime = PropsSI("Q","P",self.p_5_guess,"H",self.h_4_prime,self.fluid)
+            #endregion etat 4_prime
+
+            #region débits massiques
+            def equations(m) : 
+                return [self.h_4_prime*m[1] + m[0]*self.h_3_prime - self.m_tot*self.h_5, m[0] + m[1] - self.m_tot]
+            self.m_1, self.m_2 = fsolve(equations,[1,1])
+            #endregion débits massiques
+
+            #region ETAT 1
+            def T_out_pumpI(T1_guess) :
+                cp_average = self.CP_av(T1_guess,self.T_2,self.p_5_guess,self.p_1_guess,self.fluid)
+                
+                return T1_guess - self.T_6 - (self.p_1_guess - self.p_5_guess) / (self.eta_pump_1 * cp_average)
+
+            self.T_1 = fsolve(T_out_pumpI, self.T_6*1.02)[0]
+            self.h_1 = PropsSI("H","P",self.p_1_guess,"T",self.T_1,self.fluid)
+            self.s_1 = PropsSI("S","P",self.p_1_guess,"T",self.T_1,self.fluid)
+            self.e_1 = self.exergie(self.h_1,self.s_1)
+            self.x_1 = PropsSI("Q","P",self.p_1_guess,"T",self.T_1,self.fluid)
+            #endregion etat 1
+
+            #region ETAT 2
+            def T_out_pumpII(T2_guess) :
+                cp_average2 = self.CP_av(T2_guess,self.T_3,self.p_1_guess,self.p_2_guess,self.fluid)
+                
+                return T2_guess - self.T_1 - (self.p_2_guess - self.p_1_guess) / (self.eta_pump_2 * cp_average2)
+            
+            self.T_2 = fsolve(T_out_pumpII, self.T_1*1.02)[0]
+            self.h_2 = PropsSI("H","P",self.p_2_guess,"T",self.T_2,self.fluid)
+            self.s_2 = PropsSI("S","P",self.p_2_guess,"T",self.T_2,self.fluid)
+            self.e_2 = self.exergie(self.h_2,self.s_2)
+            self.x_2 = PropsSI("Q","P",self.p_2_guess,"T",self.T_2,self.fluid)
+            #endregion etat 2
+
+            #region CHECKS PINCH
+
+            def Etat_i_condenseur(self,p_5_guess):
+
+                h6 = self.h_6
+
+                h6i = PropsSI('H','P',p_5_guess,'Q',1,self.fluid)
+                T6i = PropsSI('T','P',p_5_guess,'Q',1,self.fluid)
+
+                hcsi = (self.m_dot_tot/self.dot_m_cf) * (h6i - h6) + self.h_11
+                Tcsi = PropsSI('T','H',hcsi,'P',self.p_10,self.cold_fluid)
+
+                return T6i, Tcsi
+    
+            def Iter_function_condenseur(self,p_5_guess):
+
+                T6i, Tcsi = self.Etat_i(p_5_guess)
+
+                return T6i - Tcsi - self.T_pinch_cd
+
+            # A CORRIGER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # def Etat_i_evaporator_I(self,p_3_guess):
+
+            #     h_hs_ex = self.h_8
+            #     h_cs_su = self.h_2
+
+            #     T_hs_i = PropsSI('T', 'P', p_3_guess , 'Q', 0, self.fluid) # T_hs_sat_liq
+            #     h_hs_i = PropsSI('H', 'P', p_3_guess , 'Q', 0, self.fluid) # h_hs_sat_liq
+
+            #     h_cs_i = (1/self.ratio_I) * (h_hs_i- h_hs_ex) + h_cs_su
+            #     T_cs_i = PropsSI('T', 'H', h_cs_i, 'P', self.p_7, self.hot_fluid)
+
+            #     return h_hs_i, h_cs_i, T_hs_i, T_cs_i
+            
+            # def Iter_function_evaportor_I(self,p_3_guess):
+                    
+            #     h_hs_i, h_cs_i, T_hs_i, T_cs_i = self.Etat_i(p_3_guess)
+            
+            #     return T_cs_i - T_hs_i - self.T_pinch_ex_I
+            
+            
+            #endregion checks pinch
 
 
         # Faire une matrice comme au HMW 3 : plus petite 
 
-        
-        # self.T_hot_fluid_out_I = self.T_1 + self.T_pinch_evap_I
-
-        # self.dot_m_tot = self.dot_m_ex * self.CP_av(self.T_hot_fluid_in_II, self.T_hot_fluid_out_I,self.p_hot_fluid,self.p_hot_fluid,self.fluid) * (self.T_hot_fluid_in_II - self.T_hot_fluid_out_I) / (self.CP_av(self.T_2,self.T_3,self.p_2,self.p_3,self.fluid) * (self.T_3 - self.T_2) + self.CP_av(self.T_1,self.T_4,self.p_1,self.p_4,self.fluid) * (self.T_4 - self.T_1))
-        # print('dot_m_tot === ',self.dot_m_tot,'[kg/s]')
-
+ 
 
 
 
@@ -198,18 +279,12 @@ class ORC(object):
 
         #region massflowrates
 
-        # Déterminé via un bilan énergétique (conservation énergie)
-        self.m_dot_I = self.dot_m_ex * (self.h_8 - self.h_9)/(self.h_4 - self.h_1) 
-        self.m_dot_II = self.dot_m_ex * (self.h_7 - self.h_8)/(self.h_3 - self.h_2)
-        self.m_dot_tot = self.m_dot_I + self.m_dot_II
-        self.m_dot_CF = self.m_dot_tot*(self.h_5 - self.h_6)/(self.h_10 - self.h_11)
-
 
         #endregion massflowrates
 
 
         #region Rendements
-        self.eta_toten = 0.4
+        
         #endregion rendements
 
 
