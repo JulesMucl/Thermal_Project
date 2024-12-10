@@ -31,7 +31,7 @@ plt.plot(S_liq, T_liq, label='Ligne de saturation - Liquide', color='blue')
 plt.plot(S_vap, T_vap, label='Ligne de saturation - Vapeur', color='red')
 
 # Tracer les courbes isobares pour différentes pressions
-isobare_pressures = np.linspace(pressures[0], pressures[-1], 8) # en Pascal
+isobare_pressures = np.linspace(149000,150000,1)#np.linspace(pressures[0], pressures[-1], 8) # en Pascal
 for P in isobare_pressures:
     S_vals = []
     T_vals = []

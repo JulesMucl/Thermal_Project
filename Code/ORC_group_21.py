@@ -84,6 +84,12 @@ class ORC(object):
         self.h_ref = PropsSI('H','P',self.p_ref,'T',self.T_ref,self.fluid)
         self.s_ref = PropsSI('S','P',self.p_ref,'T',self.T_ref,self.fluid)
 
+        # Graphes
+
+        self.p1_guess_plot = []
+        self.p2_guess_plot = []
+        self.p5_guess_plot = []
+
     
 
        
@@ -176,6 +182,11 @@ class ORC(object):
 
         # On pose les pressions en premier guess
         def cycle(p_1_guess, p_2_guess, p_5_guess) :
+
+            self.p1_guess_plot.append(p_1_guess)
+            self.p2_guess_plot.append(p_2_guess)
+            self.p5_guess_plot.append(p_5_guess)
+
             print("#"*50)
             print("P1 === ",p_1_guess/1000,"kPa")
             print("P2 === ",p_2_guess/1000,"kPa")
@@ -276,6 +287,8 @@ class ORC(object):
             self.s_2 = PropsSI("S","P",self.p_2_guess,"T",self.T_2,self.fluid)
             self.e_2 = self.exergie(self.h_2,self.s_2)
             self.x_2 = PropsSI("Q","P",self.p_2_guess,"T",self.T_2,self.fluid)
+
+
             #endregion etat 2
 
             return self.h_1, self.h_2, self.h_3, self.h_4, self.h_5, self.h_6, self.m_1, self.m_2
@@ -351,9 +364,13 @@ class ORC(object):
         #region ITERATION
 
         def check(p_guess) : 
+
+
             p1_guess = p_guess[0]
             p2_guess = p_guess[1]
             p5_guess = p_guess[2]
+
+
 
             h_1, h_2, h_3, h_4, h_5, h_6, m_1, m_2 = cycle(p1_guess, p2_guess, p5_guess)
 
@@ -370,7 +387,7 @@ class ORC(object):
         #endregion ITERATION
 
 
-        # Faire une matrice comme au HMW 3 : plus petite 
+        
 
  
 
@@ -409,6 +426,9 @@ class ORC(object):
             print("P1 === ",self.p_1/1000,"kPa")
             print("P2 === ",self.p_2/1000,"kPa")
             print("P5 === ",self.p_5/1000,"kPa")
+
+
+
    
 
 
