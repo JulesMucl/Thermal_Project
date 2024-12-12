@@ -425,7 +425,14 @@ class ORC(object):
         print("e_4 === ",self.e_4)
 
         self.e_3 = self.matrice[2][5]
-        self.eta_cyclen = (self.m_1*(self.h_4 - self.h_4_prime) + self.m_2*(self.h_3 - self.h_3_prime) ) / (self.m_2*(self.h_3 - self.h_2) + self.m_1*(self.h_4 - self.h_1))
+
+        Pm = self.m_1 * (self.h_4 - self.h_4_prime) + self.m_2 * (self.h_3 - self.h_3_prime) - ( (self.h_1 - self.h_6) * self.m_tot + (self.h_2 - self.h_1) * self.m_2 )
+        Q = self.m_2 * (self.h_7 - self.h_8) + self.m_1 * (self.h_8 - self.h_9)  # h_7 et h_8 sont les enthalpies du fluid chaud. ??
+        self.eta_cyclen = Pm / Q
+        print("PM === ",Pm)
+        print("Q === ",Q)
+        
+        #self.eta_cyclen = ((self.m_1*(self.h_4 - self.h_4_prime) + self.m_2*(self.h_3 - self.h_3_prime) - (self.h_1 - self.h_6) * self.m_tot - (self.h_2 - self.h_1) * self.m_2 )) / (self.m_2*(self.h_3 - self.h_2) + self.m_1*(self.h_4 - self.h_1))
         self.eta_cyclex = (self.m_1*(self.e_4 - self.e_4_prime) + self.m_2*(self.e_3 - self.e_3_prime) ) / (self.m_2*(self.h_3 - self.h_2) + self.m_1*(self.h_4 - self.h_1))
         #endregion rendements
 
@@ -441,6 +448,67 @@ class ORC(object):
             colonnes = ["p", "T", "s", "h", "x", "e"]
             print("Matrice :")
             self.afficher_matrice(self.matrice, lignes, colonnes)
+
+
+            
+
+            # États pour le tracé T-s avec des attributs dynamiques
+            states = [
+                {"T": self.T_1, "s": self.s_1/1000, "label": "1"},
+                {"T": self.T_2, "s": self.s_2/1000, "label": "2"},
+                {"T": self.T_3, "s": self.s_3/1000, "label": "3"},
+                {"T": self.T_3_prime, "s": self.s_3_prime/1000, "label": "3'"},
+                {"T": self.T_4, "s": self.s_4/1000, "label": "4"},
+                {"T": self.T_4_prime, "s": self.s_4_prime/1000, "label": "4'"},
+                {"T": self.T_5, "s": self.s_5/1000, "label": "5"},
+                {"T": self.T_6, "s": self.s_6/1000, "label": "6"},
+            ]
+
+            # Extraire les valeurs de T et s
+            T_values = [state["T"] for state in states]
+            s_values = [state["s"] for state in states]
+            labels = [state["label"] for state in states]
+
+            # Ajouter le point de départ pour fermer le cycle
+            T_values.append(T_values[0])
+            s_values.append(s_values[0])
+
+            # Courbe de saturation du fluide
+            s_liq = []
+            T_liq = []
+            s_vap = []
+            T_vap = []
+            for T in np.linspace(PropsSI('Ttriple', self.fluid), PropsSI('Tcrit', self.fluid), 500):
+                s_liq.append(PropsSI('S', 'T', T, 'Q', 0, self.fluid) / 1000)  # Entropie du liquide saturé
+                T_liq.append(T)
+                s_vap.append(PropsSI('S', 'T', T, 'Q', 1, self.fluid) / 1000)  # Entropie de la vapeur saturée
+                T_vap.append(T)
+
+            # Tracé du diagramme T-s
+            plt.figure(figsize=(10, 6))
+
+            # Tracé des états du cycle ORC
+            plt.plot(s_values, T_values, marker='o', linestyle='-', color='b', label="Cycle ORC")
+
+            # Tracé de la courbe de saturation
+            plt.plot(s_liq, T_liq, linestyle='--', color='r', label="Saturation liquide")
+            plt.plot(s_vap, T_vap, linestyle='--', color='g', label="Saturation vapeur")
+
+            # Ajouter des annotations pour chaque point
+            for i, label in enumerate(labels):
+                plt.annotate(label, (s_values[i], T_values[i]), textcoords="offset points", xytext=(0, 5), ha='center')
+
+            # Configuration du graphique
+            plt.title("Diagramme T-s du Cycle ORC avec Courbe de Saturation")
+            plt.xlabel("Entropie (s) [kJ/(kg.K)]")
+            plt.ylabel("Température (T) [K]")
+            plt.grid(True)
+            plt.legend()
+            plt.show()
+            
+
+
+
 
 
    
