@@ -72,11 +72,6 @@ class ORC(object):
         self.T_surchauffe = parameters['T_surchauffe']
         self.m_tot = parameters['m_tot']
 
-        # Guess
-        self.p_1_guess = parameters['p_1_guess']
-        self.p_2_guess = parameters['p_2_guess']
-        self.p_5_guess = parameters['p_5_guess']
-
 
         # ETAT REF
         self.p_ref, self.T_ref = parameters['p_ref'],   parameters['T_ref']
@@ -195,44 +190,35 @@ class ORC(object):
         
 
         # On pose les pressions en premier guess
-        def cycle(p_1_guess, p_2_guess, p_5_guess) :
+        def cycle(T_I_guess, T_II_guess, T_C_guess) :
             self.etats = np.ones((8,6)) # p, T, s, h, x, e et etats 1,2,3,3',4,4',5,6
+            if (T_I_guess < 0) or (T_II_guess < 0) or (T_C_guess < 0) :
+                raise ValueError("Température négative")
 
-            self.p1_guess_plot.append(p_1_guess)
-            self.p2_guess_plot.append(p_2_guess)
-            self.p5_guess_plot.append(p_5_guess)
+            self.T_3 = self.T_7 - T_II_guess 
+            self.T_4 = self.T_8 - T_I_guess 
+            self.T_6 = self.T_11 + T_C_guess
+            print("T_3 === ",self.T_3)
+            print("T_4 === ",self.T_4)
+            print("T_6 === ",self.T_6)
+            
+            # Pressions avec T_surchauffe et sous refroidissement
+            self.p_4 = PropsSI("P","T",self.T_4 - self.T_surchauffe,"Q",1,self.fluid)
+            self.p_3 = PropsSI("P","T",self.T_3 - self.T_surchauffe,"Q",1,self.fluid)
+            self.p_6 = PropsSI("P","T",self.T_6 + self.T_cd_subcool,"Q",0,self.fluid)
+            print("P_4 === ",self.p_4)
+            print("P_3 === ",self.p_3)
+            print("P_6 === ",self.p_6)
+            self.p_5 = self.p_6
+            self.p_1 = self.p_4
+            self.p_2 = self.p_3
 
-            self.T_3 = self.T_surchauffe + PropsSI("T","P",p_2_guess,"Q",1,self.fluid) 
-            self.T_4 = self.T_surchauffe + PropsSI("T","P",p_1_guess,"Q",1,self.fluid) 
-            self.T_6 = - self.T_cd_subcool + PropsSI("T","P",p_5_guess,"Q",0,self.fluid)
+            self.h_3 = PropsSI("H","P",self.p_3,"T",self.T_3,self.fluid)
+            self.h_4 = PropsSI("H","P",self.p_4,"T",self.T_4,self.fluid)
+            self.h_6 = PropsSI("H","P",self.p_6,"T",self.T_6,self.fluid)
 
+            # On trouve T2 via pinch.
 
-            #region ETAT 3
-            self.p_3 = p_2_guess
-            self.h_3 = PropsSI("H","P",p_2_guess,"T",self.T_3,self.fluid)
-            self.s_3 = PropsSI("S","P",p_2_guess,"T",self.T_3,self.fluid)
-            self.e_3 = self.exergie(self.h_3,self.s_3)
-            self.x_3 = PropsSI("Q","P",p_2_guess,"T",self.T_3,self.fluid)
-            self.etats[2] = [self.p_3, self.T_3, self.s_3, self.h_3, self.x_3, self.e_3]
-            #endregion etat 3
-
-            #region ETAT 4
-            self.p_4 = p_1_guess
-            self.h_4 = PropsSI("H","P",p_1_guess,"T",self.T_4,self.fluid)
-            self.s_4 = PropsSI("S","P",p_1_guess,"T",self.T_4,self.fluid)
-            self.e_4 = self.exergie(self.h_4,self.s_4)
-            self.x_4 = PropsSI("Q","P",p_1_guess,"T",self.T_4,self.fluid)
-            self.etats[4] = [self.p_4, self.T_4, self.s_4, self.h_4, self.x_4, self.e_4]
-            #endregion etat 4
-
-            #region ETAT 6
-            self.p_6 = p_5_guess
-            self.h_6 = PropsSI("H","P",p_5_guess,"T",self.T_6,self.fluid)
-            self.s_6 = PropsSI("S","P",p_5_guess,"T",self.T_6,self.fluid)
-            self.e_6 = self.exergie(self.h_6,self.s_6)
-            self.x_6 = PropsSI("Q","P",p_5_guess,"T",self.T_6,self.fluid)
-            self.etats[7] = [self.p_6, self.T_6, self.s_6, self.h_6, self.x_6, self.e_6]
-            #endregion etat 6
 
             #region ETAT 5
             self.h_5 = self.m_dot_CF/self.m_tot * (self.h_10 - self.h_11) + self.h_6
@@ -402,10 +388,11 @@ class ORC(object):
 
             return delta_T_condenseur, delta_T_evaporator_I, delta_T_evaporator_II
 
-        self.p_1 , self.p_2 , self.p_5 = fsolve(check, [self.p_1_guess, self.p_2_guess, self.p_5_guess])
-        print("P1 === ",self.p_1/1000,"kPa")
-        print("P2 === ",self.p_2/1000,"kPa")
-        print("P5 === ",self.p_5/1000,"kPa")
+
+        self.T_I_guess = 20
+        self.T_II_guess = 10
+        self.T_C_guess = 5
+        self.T_I , self.T_II , self.T_C = fsolve(check, [self.T_I_guess, self.T_II_guess, self.T_C_guess])
         #endregion ITERATION
 
 
@@ -414,9 +401,9 @@ class ORC(object):
  
 
 
+        #region ETATS
 
-
-        self.h_1, self.h_2, self.h_3, self.h_3_prime, self.h_4, self.h_4_prime, self.h_5, self.h_6, self.m_1, self.m_2, self.matrice = cycle(self.p_1, self.p_2, self.p_5)
+        self.h_1, self.h_2, self.h_3, self.h_3_prime, self.h_4, self.h_4_prime, self.h_5, self.h_6, self.m_1, self.m_2, self.matrice = cycle(self.T_I, self.T_II, self.T_C)
 
         #endregion etats
 
