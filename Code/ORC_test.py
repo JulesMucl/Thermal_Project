@@ -17,7 +17,7 @@ import pandas as pd
 import os
 import sys
 
-from ORC_group_21 import ORC
+from Jules_propal import ORC
 
 # Charger le fichier Excel
 excel_path = os.path.join(os.path.dirname(__file__), '..', 'Param', 'Projet_contraintes.xlsx')

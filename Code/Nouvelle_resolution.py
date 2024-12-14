@@ -142,7 +142,7 @@ class ORC(object):
     def evaluate(self):
 
 
-        #region ETATS
+        #region ETATS connnus
 
             #region ETAT 7
         # Etat 7 connu car données d'entrée du problème. 
@@ -185,10 +185,11 @@ class ORC(object):
         self.e_11 = self.exergie(self.h_11,self.s_11)
         self.x_11 = PropsSI("Q","T",self.T_11,"P",self.p_CF,self.cold_fluid)
             #endregion etat 11
-
-
         
+        #endregion etats connus
 
+
+    
         # On pose les pressions en premier guess
         def cycle(T_I_guess, T_II_guess, T_C_guess) :
             self.etats = np.ones((8,6)) # p, T, s, h, x, e et etats 1,2,3,3',4,4',5,6

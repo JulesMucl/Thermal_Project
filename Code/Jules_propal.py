@@ -23,6 +23,7 @@ class ORC(object):
     def __init__(self,inputs,parameters,display):
 
         self.display             = display
+        self.i = 0
 
         # HOT Fluid
         self.hot_fluid           = parameters['hot_fluid']
@@ -196,11 +197,15 @@ class ORC(object):
 
         # On pose les pressions en premier guess
         def cycle(p_1_guess, p_2_guess, p_5_guess) :
+
+            self.i += 1
             self.etats = np.ones((8,6)) # p, T, s, h, x, e et etats 1,2,3,3',4,4',5,6
 
             self.p1_guess_plot.append(p_1_guess)
             self.p2_guess_plot.append(p_2_guess)
             self.p5_guess_plot.append(p_5_guess)
+
+          
 
             self.T_3 = self.T_surchauffe + PropsSI("T","P",p_2_guess,"Q",1,self.fluid) 
             self.T_4 = self.T_surchauffe + PropsSI("T","P",p_1_guess,"Q",1,self.fluid) 
@@ -234,15 +239,6 @@ class ORC(object):
             self.etats[7] = [self.p_6, self.T_6, self.s_6, self.h_6, self.x_6, self.e_6]
             #endregion etat 6
 
-            #region ETAT 5
-            self.h_5 = self.m_dot_CF/self.m_tot * (self.h_10 - self.h_11) + self.h_6
-            self.s_5 = PropsSI("S","P",p_5_guess,"H",self.h_5,self.fluid)
-            self.e_5 = self.exergie(self.h_5,self.s_5)
-            self.x_5 = PropsSI("Q","P",p_5_guess,"H",self.h_5,self.fluid)
-            self.T_5 = PropsSI("T","P",p_5_guess,"H",self.h_5,self.fluid)
-            self.etats[6] = [p_5_guess, self.T_5, self.s_5, self.h_5, self.x_5, self.e_5]
-            #endregion etat 5
-
             # Via turbine : 
             #region ETAT 3_PRIME
             self.s_prim = PropsSI("S","P",p_5_guess,"Q", 0,self.fluid)
@@ -273,11 +269,18 @@ class ORC(object):
             self.etats[5] = [p_5_guess, self.T_4_prime, self.s_4_prime, self.h_4_prime, self.x_4_prime, self.e_4_prime]
             #endregion etat 4_prime
 
-            #region débits massiques
-            def equations(m) : 
-                return [self.h_4_prime*m[0] + m[1]*self.h_3_prime - self.m_tot*self.h_5, m[0] + m[1] - self.m_tot]
-            self.m_1, self.m_2 = fsolve(equations,[100,100])
-            #endregion débits massiques
+
+
+            #region ETAT 5
+            self.h_5 = self.m_dot_CF/self.m_tot * (self.h_10 - self.h_11) + self.h_6
+            self.s_5 = PropsSI("S","P",p_5_guess,"H",self.h_5,self.fluid)
+            self.e_5 = self.exergie(self.h_5,self.s_5)
+            self.x_5 = PropsSI("Q","P",p_5_guess,"H",self.h_5,self.fluid)
+            self.T_5 = PropsSI("T","P",p_5_guess,"H",self.h_5,self.fluid)
+            self.etats[6] = [p_5_guess, self.T_5, self.s_5, self.h_5, self.x_5, self.e_5]
+            #endregion etat 5
+
+
 
             #region ETAT 1
             def T_out_pumpI(T1_guess, arg) :
@@ -314,6 +317,16 @@ class ORC(object):
             self.x_2 = PropsSI("Q","P",p_2_guess,"T",self.T_2,self.fluid)
             self.etats[1] = [p_2_guess, self.T_2, self.s_2, self.h_2, self.x_2, self.e_2]
             #endregion etat 2
+
+
+
+            #region débits massiques
+            self.m_1 = self.dot_m_ex * (self.h_7 - self.h_8) / (self.h_3 - self.h_2)  
+            self.m_2 = self.dot_m_ex * (self.h_8 - self.h_9) / (self.h_4 - self.h_1)
+            self.m_tot = self.m_1 + self.m_2
+            print("m_tot===",self.m_tot,"essai",self.i)
+            #endregion débits massiques
+
 
             return self.h_1, self.h_2, self.h_3, self.h_3_prime, self.h_4, self.h_4_prime, self.h_5, self.h_6, self.m_1, self.m_2, self.etats
 
