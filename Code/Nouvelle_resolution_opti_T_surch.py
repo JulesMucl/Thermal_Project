@@ -425,7 +425,7 @@ class ORC(object):
             self.n += 1
             return - self.Pe
 
-        self.T_surchauffe_3, self.T_surchauffe_4, self.T_sousref = minimize(opti_T_surchauffe_sousref, x0=(10,10,10), bounds=[(9, 20), (9,20), (9,20)], method='TNC').x
+        self.T_surchauffe_3, self.T_surchauffe_4, self.T_sousref = minimize(opti_T_surchauffe_sousref, x0=(10,10,10), bounds=[(7, 20), (7,20), (7,20)], method='TNC').x
 
         print("#"*100)
         print("T_surchauffe_3 === ",self.T_surchauffe_3)
