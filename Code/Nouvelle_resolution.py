@@ -143,7 +143,7 @@ class ORC(object):
     def evaluate(self):
 
 
-        #region ETATS
+        #region ETATS connnus
 
             #region ETAT 7
         # Etat 7 connu car données d'entrée du problème. 
