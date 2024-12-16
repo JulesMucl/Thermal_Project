@@ -17,7 +17,7 @@ import pandas as pd
 import os
 import sys
 
-from ORC_group_21 import ORC
+from Nouvelle_resolution_opti_T_surch import ORC
 
 # Charger le fichier Excel
 excel_path = os.path.join(os.path.dirname(__file__), '..', 'Param', 'Projet_contraintes.xlsx')
@@ -38,24 +38,3 @@ try:
 except ValueError as e:
     print(f"Une erreur est survenue dans my_ORC.evaluate(): {e}")
 
-#eta_en = my_ORC.eta_toten
-p1 = my_ORC.p1_guess_plot
-p2 = my_ORC.p2_guess_plot
-p5 = my_ORC.p5_guess_plot
-
-
-
-plt.figure(figsize=(10, 6))
-plt.plot(p1, label="p1_guess_plot", linestyle='-', marker='o')
-plt.plot(p2, label="p2_guess_plot", linestyle='--', marker='x')
-plt.plot(p5, label="p5_guess_plot", linestyle='-.', marker='s')
-
-# Ajout des légendes et titres
-plt.title("Comparison of p1_guess_plot, p2_guess_plot, and p5_guess_plot")
-plt.xlabel("Index")
-plt.ylabel("Values")
-plt.legend()
-plt.grid(True)
-
-# Affichage du graphe
-plt.show()

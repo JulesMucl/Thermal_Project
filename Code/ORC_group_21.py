@@ -66,7 +66,7 @@ class ORC(object):
         # Contraintes
         self.p_7       = self.p_HF
         self.m_HF      = parameters['m_dot_HF']
-
+        self.eta_mec   = parameters['eta_mec']
         # Impose
 
         self.T_surchauffe = parameters['T_surchauffe']
@@ -429,16 +429,28 @@ class ORC(object):
         self.e_3_prime = self.matrice[3][5]
         self.e_4 = self.matrice[4][5]
         self.e_3 = self.matrice[2][5]
+                
+        self.Pm = self.m_1 * (self.h_4 - self.h_4_prime) + self.m_2 * (self.h_3 - self.h_3_prime) - self.m_tot*(self.h_1 - self.h_6) - self.m_2*(self.h_2 - self.h_1)
+        self.Pe = self.eta_mec * self.Pm
 
-        Pm = self.m_1 * (self.h_4 - self.h_4_prime) + self.m_2 * (self.h_3 - self.h_3_prime) - ( (self.h_1 - self.h_6) * self.m_tot + (self.h_2 - self.h_1) * self.m_2 )
-        Q = self.m_2 * (self.h_7 - self.h_8) + self.m_1 * (self.h_8 - self.h_9)  # h_7 et h_8 sont les enthalpies du fluid chaud. ??
-        self.eta_cyclen = Pm / Q
-        print("PM === ",Pm)
-        print("Q === ",Q)
+        self.eta_cyclen = (self.m_1*(self.h_4 - self.h_4_prime) + self.m_2*(self.h_3 - self.h_3_prime) - self.m_tot*(self.h_1 - self.h_6) - self.m_2*(self.h_2 - self.h_1)) / (self.m_2*(self.h_3 - self.h_2) + self.m_1*(self.h_4 - self.h_1))
+        self.eta_cyclex = (self.m_1*(self.h_4 - self.h_4_prime) + self.m_2*(self.h_3 - self.h_3_prime) - self.m_tot*(self.h_1 - self.h_6) - self.m_2*(self.h_2 - self.h_1)) / (self.m_2*(self.e_3 - self.e_2) + self.m_1*(self.e_4 - self.e_1))
         
-        
-        self.eta_cyclen = (self.m_1*(self.h_4 - self.h_4_prime) + self.m_2*(self.h_3 - self.h_3_prime) ) / (self.m_2*(self.h_3 - self.h_2) + self.m_1*(self.h_4 - self.h_1))
-        self.eta_cyclex = (self.m_1*(self.e_4 - self.e_4_prime) + self.m_2*(self.e_3 - self.e_3_prime) ) / (self.m_2*(self.h_3 - self.h_2) + self.m_1*(self.h_4 - self.h_1))
+        self.e_f = PropsSI("U", "T", self.T_ref, "P", self.p_ref, self.fluid)
+        self.e_exh_I = self.e_7 - self.e_8
+        self.e_exh_II = self.e_8 - self.e_9
+        self.eta_transex = (self.m_2*(self.e_3 - self.e_2) + self.m_1*(self.e_4 - self.e_1))/(self.m_HF*(self.e_f - self.e_exh_II - self.e_exh_I))
+        self.eta_conden = self.m_tot*(self.h_5 - self.h_6) / self.m_dot_CF*(self.h_10 - self.h_11)
+        self.eta_condex = self.m_tot*(self.e_5 - self.e_6) / self.m_dot_CF*(self.e_10 - self.e_11)
+        self.eta_rotex = (self.m_1*(self.h_4 - self.h_4_prime) + self.m_2*(self.h_3 - self.h_3_prime)- self.m_tot*(self.h_1 - self.h_6) - self.m_2*(self.h_2 - self.h_1))/(self.m_1*(self.e_4 - self.e_4_prime) + self.m_2*(self.e_3 - self.e_3_prime)- self.m_tot*(self.e_1 - self.e_6) - self.m_2*(self.e_2 - self.e_1))
+
+        self.loss_mec = self.Pm - self.Pe
+        self.loss_conden = self.m_tot*(self.h_6 - self.h_5)
+        self.loss_condex = self.m_tot*(self.e_6 - self.e_5)
+        self.loss_rotex = (1 - self.eta_rotex) * self.Pm
+        self.loss_transex_I = self.m_HF*(self.e_7 - self.e_8) - self.m_1*(self.e_4 - self.e_1)
+        self.loss_transex_II = self.m_HF*(self.e_8 - self.e_9) - self.m_2*(self.e_3 - self.e_2)
+        self.loss_transex_tot = self.loss_transex_I + self.loss_transex_II
         #endregion rendements
 
 
@@ -455,6 +467,7 @@ class ORC(object):
             self.afficher_matrice(self.matrice, lignes, colonnes)
 
 
+            #region Graphes T-S
             # Courbe de saturation du fluide
             s_liq = []
             T_liq = []
@@ -548,9 +561,25 @@ class ORC(object):
             plt.legend()
             plt.show()
 
+            #endregion Graphes T-S
 
 
+            #region Pies Charts
+            plt.figure(1)
+            self.losses = [np.abs(self.loss_mec), np.abs(self.loss_conden), np.abs(self.Pe)]
+            self.labels = ["Pertes mécaniques = "+ str(self.loss_mec*10**(-6)) + "MW", "Pertes au condenseur = "+ str(self.loss_conden*10**(-6)) + "MW", "Puissance électrique = " + str(self.Pe*10**(-6)) + "MW"]
+            plt.pie(self.losses, labels=self.labels, autopct='%1.1f%%', startangle=90)
+            plt.title("Répartition energie. Energie totale = " + str(self.Pm*10**(-6) + self.loss_conden*10**(-6)) + " MW")
+            self.pie_en = plt.figure(1)
+            plt.show()
 
-   
+            plt.figure(2)
+            self.losses = [np.abs(self.loss_mec), np.abs(self.loss_condex), np.abs(self.Pe), np.abs(self.loss_rotex), np.abs(self.loss_transex_tot)]
+            self.labels = ["Pertes mécaniques = "+ str(self.loss_mec*10**(-6)) + "MW", "Pertes exergétiques au condenseur = "+ str(self.loss_condex*10**(-6)) + "MW", "Puissance électrique = " + str(self.Pe*10**(-6)) + "MW", "Pertes aux turbines et pompes = " + str(self.loss_condex*10**(-6)) + "MW", "Pertes aux échangeurs de chaleur = "+ str(self.loss_transex_tot*10**(-6)) + "MW"]
+            plt.pie(self.losses, labels=self.labels, autopct='%1.1f%%', startangle=90)
+            plt.title("Répartition exergie. Exergie totale = " + str((0)*10**(-6)) + " MW")
+            self.pie_ex = plt.figure(2)
+            plt.show()
 
 
+            #endregion Pies Charts
