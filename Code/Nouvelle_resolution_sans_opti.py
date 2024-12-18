@@ -72,6 +72,11 @@ class ORC(object):
         self.p_2_guess = parameters['p_2_guess']
         self.p_5_guess = parameters['p_5_guess']
 
+
+        self.T_1_guess = parameters['T_1_guess']
+        self.T_2_guess = parameters['T_2_guess']
+        self.T_5_guess = parameters['T_5_guess']
+
         # ETAT REF
         self.p_ref, self.T_ref = parameters['p_ref'],   parameters['T_ref']
         self.h_ref = PropsSI('H','P',self.p_ref,'T',self.T_ref,self.fluid)
@@ -241,9 +246,9 @@ class ORC(object):
             return First_eq, Eq1, Eq2
 
         # Initial guess
-        T_1_guess = 25.3 + 273.15
-        T_2_guess = 25.6 + 273.15
-        T_5_guess = 65 + 273.15
+        T_1_guess = self.T_1_guess #25.3 + 273.15
+        T_2_guess = self.T_2_guess #25.6 + 273.15
+        T_5_guess = self.T_5_guess #65 + 273.15
 
         # Résolution
         solution = least_squares(cycle, [T_1_guess, T_2_guess, T_5_guess], bounds = ([273.15 + 20,273.15 + 20,self.T_11],[self.T_8,self.T_7,273.15 + 120]), max_nfev=600)
@@ -388,6 +393,8 @@ class ORC(object):
         self.loss_transex_II = self.m_HF*(self.e_8 - self.e_9) - self.m_1*(self.e_4 - self.e_1)
         self.loss_transex_tot = self.loss_transex_I + self.loss_transex_II
         self.loss_exhex = self.m_HF*self.e_9 
+
+        self.eta_therm = self.Pe / (self.m_1 * (self.h_4 - self.h_1) + self.m_2 * (self.h_3 - self.h_2))
         #endregion rendements
 
         print(self.fluid)
