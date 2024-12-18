@@ -592,13 +592,3 @@ class ORC(object):
 
 
             #endregion Pies Charts
-
-
-
-
-
-
-
-            # Optimisation T_surchauffe et T_sous-refroidissement, T_8
-            # Adapter pour avoir 2 T_surchauffe différentes
-            # Impact type de fluide (1 dans chaque catégorie), Impact température extérieure

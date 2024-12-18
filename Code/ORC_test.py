@@ -17,7 +17,7 @@ import pandas as pd
 import os
 import sys
 
-from Nouvelle_resolution_opti_T_surch import ORC
+from Nouvelle_resolution_sans_opti import ORC
 
 # Charger le fichier Excel
 excel_path = os.path.join(os.path.dirname(__file__), '..', 'Param', 'Projet_contraintes.xlsx')
@@ -32,7 +32,7 @@ inputs = 0
 
 
 
-my_ORC = ORC(inputs,params,True)
+my_ORC = ORC(inputs,params,False)
 try:
     my_ORC.evaluate()
 except ValueError as e:

@@ -84,37 +84,6 @@ class ORC(object):
 
         return ( h_i - self.h_ref ) - self.T_ref * ( s_i - self.s_ref ) 
 
-
-    def CP_av(self, t1, t2, p1, p2, fluid):
-        """
-        Calcul de la capacité calorifique moyenne massique (cp) entre deux températures et deux pressions.
-
-        :param t1: Température de départ (en K)
-        :param t2: Température d'arrivée (en K)
-        :param p1: Pression de départ (en Pa)
-        :param p2: Pression d'arrivée (en Pa)
-        :return: Capacité calorifique moyenne massique (en J/(kg.K))
-        """
-        if t1 == t2:
-            raise ValueError("t1 et t2 ne peuvent pas être égaux, sinon division par zéro.")
-        
-        p = (p1 + p2) / 2  # Pression moyenne
-
-        try:
-            # Calcul de l'intégrale de cp entre t1 et t2
-            cp_integrale = intgr.quad(
-                lambda x: PropsSI('CPMASS', 'T', x, 'P', p, fluid),t1, t2)[0]
-            
-            # Capacité calorifique moyenne
-            cp_av = cp_integrale / np.abs(t2 - t1)
-            return cp_av
-        except Exception as e:
-            raise ValueError(f"Erreur lors du calcul de CP_av : {e}")
-
-    def CP(self,T, P,fluid):
-        cp = PropsSI('CPMASS','P', P ,'T',T,fluid) 
-        return cp
-
     def evaluate(self):
 
 
@@ -165,6 +134,9 @@ class ORC(object):
         self.n = 0
         def opti_T_surchauffe_sousref(T) : 
             T_surchauffe_3, T_surchauffe_4, T_sousref = T
+            print("T_surchauffe_3 === ",T_surchauffe_3)
+            print("T_surchauffe_4 === ",T_surchauffe_4)
+            print("T_sousref === ",T_sousref)
 
             T_4 = self.T_8 - T_surchauffe_4
             T_3 = self.T_7 - T_surchauffe_3
@@ -388,7 +360,7 @@ class ORC(object):
             self.n += 1
             return - self.Pe
 
-        self.T_surchauffe_3, self.T_surchauffe_4, self.T_sousref = minimize(opti_T_surchauffe_sousref, x0=(10,10,1), bounds=[(1, 20), (1,20), (1,20)], method='TNC').x
+        self.T_surchauffe_3, self.T_surchauffe_4, self.T_sousref = minimize(opti_T_surchauffe_sousref, x0=(5,5,1), bounds=[(1, 20), (1,20), (1,20)], method='TNC').x
 
         T_3 = self.T_7 - self.T_surchauffe_3
         T_4 = self.T_8 - self.T_surchauffe_4
@@ -563,7 +535,7 @@ class ORC(object):
             self.losses = [np.abs(np.round(self.loss_mec,2)), np.abs(np.round(self.loss_conden,2)), np.abs(np.round(self.Pe,2)), np.abs(np.round(self.loss_exhen,2))]
             self.labels = ["Pertes mécaniques = "+ str(np.abs(np.round(self.loss_mec*10**(-6),2))) + "MW", "Pertes au condenseur = "+ str(np.abs(np.round(self.loss_conden*10**(-6),2))) + "MW", "Puissance électrique = " + str(np.abs(np.round(self.Pe*10**(-6),2))) + "MW", "Pertes à la sortie = " + str(np.abs(np.round(self.loss_exhen*10**(-6),2))) + "MW"]
             plt.pie(self.losses, labels=self.labels, autopct='%1.1f%%', startangle=90)
-            plt.title("Répartition energie. Energie totale = " + str(self.m_HF*self.h_7) + " MW")
+            plt.title("Répartition energie. Energie totale = " + str(self.m_HF*self.h_7*10**(-6)) + " MW")
             self.pie_en = plt.figure(1)
             plt.show()
 

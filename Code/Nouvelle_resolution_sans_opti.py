@@ -73,7 +73,6 @@ class ORC(object):
         self.p_ref, self.T_ref = parameters['p_ref'],   parameters['T_ref']
         self.h_ref = PropsSI('H','P',self.p_ref,'T',self.T_ref,self.fluid)
         self.s_ref = PropsSI('S','P',self.p_ref,'T',self.T_ref,self.fluid)
-
         # Graphes
 
         self.T1_guess_plot = []
@@ -146,10 +145,6 @@ class ORC(object):
             self.T2_guess_plot.append(T2)
             self.T5_guess_plot.append(T5)
             self.n_iterations += 1
-            
-            print("T1 === ",T1)
-            print("T2 === ",T2)
-            print("T5 === ",T5)
 
             # Iteration sur p_1 via pitch
             def pitch_evap_I(p1) :
@@ -190,7 +185,6 @@ class ORC(object):
             self.h_3 = PropsSI("H","T",self.T_3,"P",self.p_2,self.fluid)
             self.m_2 = self.m_HF*(self.h_7 - self.h_8)/(self.h_3 - self.h_2)
             self.m_tot = self.m_1 + self.m_2
-            print("m_tot === ",self.m_tot)
             # Etat 5 via pinch
             def pitch_cond(T6) :
                 T_6_sat = T6 + self.T_cd_subcool
@@ -360,26 +354,6 @@ class ORC(object):
         self.x_4_prime = PropsSI("Q","P",self.p_5,"H",self.h_4_prime,self.fluid)
         self.e_4_prime = self.exergie(self.h_4_prime,self.s_4_prime)
 
-        # Plot evolution des valeurs de T1, T2 et T5
-        self.pas = np.linspace(1,self.n_iterations + 1,self.n_iterations)
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.pas, self.T1_guess_plot, label="T1_guess_plot", linestyle='-', marker='o')
-        plt.plot(self.pas, self.T2_guess_plot, label="T2_guess_plot", linestyle='--', marker='x')
-        plt.plot(self.pas, self.T5_guess_plot, label="T5_guess_plot", linestyle='-.', marker='s')
-        plt.title("Comparison of T1_guess_plot, T2_guess_plot, and T5_guess_plot")
-        plt.xlabel("Index")
-        plt.ylabel("Values")
-        plt.legend()
-        plt.show()
-
-        # self.n_line = np.linspace(1,self.n+1, self.n)
-        # plt.figure(figsize=(10, 6))
-        # plt.plot(self.n_line, self.liste_Pe, label="Pe", linestyle='-', marker='o')
-        # plt.title("Evolution of Pe")
-        # plt.xlabel("Index")
-        # plt.ylabel("Values")
-        # plt.legend()
-        # plt.show()
 
 
         print("m_1 === ",self.m_1)
@@ -407,21 +381,33 @@ class ORC(object):
         self.loss_exhen = self.m_HF*self.h_9
         self.loss_condex = self.m_tot*(self.e_6 - self.e_5)
         self.loss_rotex = (1 - self.eta_rotex) * self.Pm
-        self.loss_transex_I = self.m_HF*(self.e_7 - self.e_8) - self.m_1*(self.e_4 - self.e_1)
-        self.loss_transex_II = self.m_HF*(self.e_8 - self.e_9) - self.m_2*(self.e_3 - self.e_2)
+        self.loss_transex_I = self.m_HF*(self.e_7 - self.e_8) - self.m_2*(self.e_3 - self.e_2)
+        self.loss_transex_II = self.m_HF*(self.e_8 - self.e_9) - self.m_1*(self.e_4 - self.e_1)
         self.loss_transex_tot = self.loss_transex_I + self.loss_transex_II
-        self.loss_exhex = self.m_HF*self.e_9
+        self.loss_exhex = self.m_HF*self.e_9 
         #endregion rendements
 
+        print(self.fluid)
+        print("P1 === ",self.p_1/1000,"kPa")
+        print("P2 === ",self.p_2/1000,"kPa")
+        print("P5 === ",self.p_5/1000,"kPa")
+        print("Rendement cycle energie === ",self.eta_cyclen)
+        print("Rendement cycle exergie === ",self.eta_cyclex)
+        print("Pe === ",self.Pe/1000,"kW")
 
         if self.display:
-            print(self.fluid)
-            print("P1 === ",self.p_1/1000,"kPa")
-            print("P2 === ",self.p_2/1000,"kPa")
-            print("P5 === ",self.p_5/1000,"kPa")
-            print("Rendement cycle energie === ",self.eta_cyclen)
-            print("Rendement cycle exergie === ",self.eta_cyclex)
-            print("Pe === ",self.Pe/1000,"kW")
+
+            # Plot evolution des valeurs de T1, T2 et T5
+            self.pas = np.linspace(1,self.n_iterations + 1,self.n_iterations)
+            plt.figure(figsize=(10, 6))
+            plt.plot(self.pas, self.T1_guess_plot, label="T1_guess_plot", linestyle='-', marker='o')
+            plt.plot(self.pas, self.T2_guess_plot, label="T2_guess_plot", linestyle='--', marker='x')
+            plt.plot(self.pas, self.T5_guess_plot, label="T5_guess_plot", linestyle='-.', marker='s')
+            plt.title("Comparison of T1_guess_plot, T2_guess_plot, and T5_guess_plot")
+            plt.xlabel("Index")
+            plt.ylabel("Values")
+            plt.legend()
+            plt.show()
 
             #region Graphes T-S
             # Courbe de saturation du fluide
@@ -437,7 +423,7 @@ class ORC(object):
             # Tracé du diagramme T-s
             plt.figure(figsize=(10, 6))
             # Tracé de la courbe de saturation
-            plt.plot(s_liq, T_liq, linestyle='--', color='blue', label="Saturation curve")
+            plt.plot(s_liq, T_liq, linestyle='--', color='blue', label="Courbe de saturation")
             plt.plot(s_vap, T_vap, linestyle='--', color='blue')
 
             # Ajout courbes cycle
@@ -488,7 +474,7 @@ class ORC(object):
                     s_78.append(PropsSI('S', 'T', T, 'P', self.p_7, self.hot_fluid) / 1000)
                 else:
                     s_78.append(PropsSI('S', 'T', T, 'Q', 0, self.hot_fluid) / 1000)
-            plt.plot(s_78, T_78, color='red', label="Hot Fluid Evaporator II", linestyle='--')
+            plt.plot(s_78, T_78, color='red', label="Fluide Chaud Evaporateur II", linestyle='--')
 
             T_89 = np.linspace(self.T_8, self.T_9, 100)
             s_89 = []
@@ -497,7 +483,7 @@ class ORC(object):
                     s_89.append(PropsSI('S', 'T', T, 'P', self.p_7, self.hot_fluid) / 1000)
                 else:
                     s_89.append(PropsSI('S', 'T', T, 'Q', 0, self.hot_fluid) / 1000)
-            plt.plot(s_89, T_89, color='yellow', linestyle='--', label="Hot Fluid Evaporator I")
+            plt.plot(s_89, T_89, color='yellow', linestyle='--', label="Fluide Chaud Evaporateur I")
 
             T_1110 = np.linspace(self.T_11, self.T_10, 100)
             s_1110 = []
@@ -506,7 +492,7 @@ class ORC(object):
                     s_1110.append(PropsSI('S', 'T', T, 'P', self.p_CF, self.cold_fluid) / 1000)
                 else:
                     s_1110.append(PropsSI('S', 'T', T, 'Q', 0, self.cold_fluid) / 1000)
-            plt.plot(s_1110, T_1110, color='g', linestyle='--', label="Cold Fluid Condenser")
+            plt.plot(s_1110, T_1110, color='g', linestyle='--', label="Fluide Froid Condenseur")
 
 
             # Configuration du graphique
@@ -525,13 +511,13 @@ class ORC(object):
             self.losses = [np.abs(np.round(self.loss_mec,2)), np.abs(np.round(self.loss_conden,2)), np.abs(np.round(self.Pe,2)), np.abs(np.round(self.loss_exhen,2))]
             self.labels = ["Pertes mécaniques = "+ str(np.abs(np.round(self.loss_mec*10**(-6),2))) + "MW", "Pertes au condenseur = "+ str(np.abs(np.round(self.loss_conden*10**(-6),2))) + "MW", "Puissance électrique = " + str(np.abs(np.round(self.Pe*10**(-6),2))) + "MW", "Pertes à la sortie = " + str(np.abs(np.round(self.loss_exhen*10**(-6),2))) + "MW"]
             plt.pie(self.losses, labels=self.labels, autopct='%1.1f%%', startangle=90)
-            plt.title("Répartition energie. Energie totale = " + str(self.m_HF*self.h_7) + " MW")
+            plt.title("Répartition energie. Energie totale = " + str(self.m_HF*self.h_7*10**(-6)) + " MW")
             self.pie_en = plt.figure(1)
             plt.show()
 
             plt.figure(2)
             self.losses = [np.abs(self.loss_exhex), np.abs(self.loss_mec), np.abs(self.loss_condex), np.abs(self.Pe), np.abs(self.loss_rotex), np.abs(self.loss_transex_tot)]
-            self.labels = ["Pertes à la sortie = "+ str(np.abs(np.round(self.loss_exhex*10**(-6),2))) + "MW", "Pertes mécaniques = "+ str(np.abs(np.round(self.loss_mec*10**(-6),2))) + "MW", "Pertes exergétiques au condenseur = "+ str(np.abs(np.round(self.loss_condex*10**(-6),2))) + "MW", "Puissance électrique = " + str(np.abs(np.round(self.Pe*10**(-6),2))) + "MW", "Pertes aux turbines et pompes = " + str(np.abs(np.round(self.loss_condex*10**(-6),2))) + "MW", "Pertes aux échangeurs de chaleur = "+ str(np.abs(np.round(self.loss_transex_tot*10**(-6),2))) + "MW"]
+            self.labels = ["Pertes à la sortie = "+ str(np.abs(np.round(self.loss_exhex*10**(-6),2))) + "MW", "Pertes mécaniques = "+ str(np.abs(np.round(self.loss_mec*10**(-6),2))) + "MW", "Pertes exergétiques au condenseur = "+ str(np.abs(np.round(self.loss_condex*10**(-6),2))) + "MW", "Puissance électrique = " + str(np.abs(np.round(self.Pe*10**(-6),2))) + "MW", "Pertes aux turbines et pompes = " + str(np.abs(np.round(self.loss_rotex*10**(-6),2))) + "MW", "Pertes aux échangeurs de chaleur = "+ str(np.abs(np.round(self.loss_transex_tot*10**(-6),2))) + "MW"]
             plt.pie(self.losses, labels=self.labels, autopct='%1.1f%%', startangle=90)
             plt.title("Répartition exergie. Exergie totale = " + str((self.m_HF*self.e_7)*10**(-6)) + " MW")
             self.pie_ex = plt.figure(2)
@@ -540,11 +526,3 @@ class ORC(object):
 
             #endregion Pies Charts
 
-
-
-
-
-
-
-            # Optimisation T_surchauffe et T_sous-refroidissement, T_8
-            # Impact type de fluide (1 dans chaque catégorie), Impact température extérieure
