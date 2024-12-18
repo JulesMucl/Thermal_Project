@@ -13,15 +13,18 @@ import scipy as Scipy
 from scipy.optimize import least_squares
 from scipy.optimize import minimize
 from scipy.integrate import quad
+import os
 
 
 
 
 class ORC(object):
 
-    def __init__(self,inputs,parameters,display):
+    def __init__(self,inputs,parameters,display,output_dir="graphs"):
 
         self.display             = display
+        self.output_dir = output_dir
+
 
         # HOT Fluid
         self.hot_fluid           = parameters['hot_fluid']
@@ -397,6 +400,10 @@ class ORC(object):
 
         if self.display:
 
+
+            # Créer le répertoire de sortie s'il n'existe pas
+            os.makedirs(self.output_dir, exist_ok=True)
+
             # Plot evolution des valeurs de T1, T2 et T5
             self.pas = np.linspace(1,self.n_iterations + 1,self.n_iterations)
             plt.figure(figsize=(10, 6))
@@ -407,6 +414,11 @@ class ORC(object):
             plt.xlabel("Index")
             plt.ylabel("Values")
             plt.legend()
+
+            # Sauvegarder le graphique
+            output_path = os.path.join(self.output_dir, "comparison_T1_T2_T5.png")
+            plt.savefig(output_path, dpi=300)
+            print(f"Graphe sauvegardé : {output_path}")
             plt.show()
 
             #region Graphes T-S
@@ -501,6 +513,12 @@ class ORC(object):
             plt.ylabel("Température (T) [K]")
             plt.grid(True)
             plt.legend()
+
+            # Sauvegarder le graphique
+            output_path = os.path.join(self.output_dir, "diagramme_TS.png")
+            plt.savefig(output_path, dpi=300)
+            print(f"Graphe sauvegardé : {output_path}")
+
             plt.show()
 
             #endregion Graphes T-S
@@ -513,6 +531,12 @@ class ORC(object):
             plt.pie(self.losses, labels=self.labels, autopct='%1.1f%%', startangle=90)
             plt.title("Répartition energie. Energie totale = " + str(self.m_HF*self.h_7*10**(-6)) + " MW")
             self.pie_en = plt.figure(1)
+
+            # Sauvegarder le graphique
+            output_path = os.path.join(self.output_dir, "Piechart_Energie.png")
+            plt.savefig(output_path, dpi=300)
+            print(f"Graphe sauvegardé : {output_path}")
+
             plt.show()
 
             plt.figure(2)
@@ -521,6 +545,13 @@ class ORC(object):
             plt.pie(self.losses, labels=self.labels, autopct='%1.1f%%', startangle=90)
             plt.title("Répartition exergie. Exergie totale = " + str((self.m_HF*self.e_7)*10**(-6)) + " MW")
             self.pie_ex = plt.figure(2)
+
+
+            # Sauvegarder le graphique
+            output_path = os.path.join(self.output_dir, "Piechart_Exergie.png")
+            plt.savefig(output_path, dpi=300)
+            print(f"Graphe sauvegardé : {output_path}")
+
             plt.show()
 
 
