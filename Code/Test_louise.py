@@ -12,6 +12,7 @@ import scipy.integrate as spi
 from math import log
 import scipy as Scipy
 from scipy.optimize import least_squares
+from scipy.integrate import quad
 
 
 
@@ -66,7 +67,8 @@ class ORC(object):
 
         # Impose
 
-        self.T_surchauffe = parameters['T_surchauffe']
+        self.T_surchauffe_3 = parameters['T_surchauffe_3']
+        self.T_surchauffe_4 = parameters['T_surchauffe_4']
 
 
         # ETAT REF
@@ -201,9 +203,12 @@ class ORC(object):
             self.p_3 = p_2_guess
             self.p_6 = p_5_guess
 
-            self.T_3 = self.T_surchauffe + PropsSI("T","P",p_2_guess,"Q",1,self.fluid) 
-            self.T_4 = self.T_surchauffe + PropsSI("T","P",p_1_guess,"Q",1,self.fluid) 
+            self.T_3 = self.T_surchauffe_3 + PropsSI("T","P",p_2_guess,"Q",1,self.fluid) 
+            self.T_4 = self.T_surchauffe_4 + PropsSI("T","P",p_1_guess,"Q",1,self.fluid) 
             self.T_6 = - self.T_cd_subcool + PropsSI("T","P",p_5_guess,"Q",0,self.fluid)
+            print("P1 === ",p_1_guess)
+            print("P2 === ",p_2_guess)
+            print("P5 === ",p_5_guess)
 
 
             self.h_3 = PropsSI("H","P",self.p_3,"T",self.T_3,self.fluid)
@@ -224,14 +229,14 @@ class ORC(object):
 
                 return T_8_prim - T_1_prim - self.T_pinch_ex_I
             
-            self.T_1 = least_squares(pitch_evap_I, x0=25.3 + 273.15, bounds=(273.15 + 20, self.T_8)).x[0]
+            self.T_1 = least_squares(pitch_evap_I, x0=10 + 273.15, bounds=(273.15, self.T_9)).x[0]
             self.h_1 = PropsSI("H","P",p_1_guess,"T",self.T_1,self.fluid)
 
             self.m_1 = self.m_HF*(self.h_8 - self.h_9)/(self.h_4 - self.h_1)
             print("m_1 === ",self.m_1)
             # Iteration sur T_2 via pitch
 
-            def pitch_evap_II(T2) : 
+            def pitch_evap_II(T2) :
                 h_2 = PropsSI("H","P",p_2_guess,"T",T2,self.fluid)
                 T_2_prim = PropsSI("T","P",p_2_guess,"Q", 0,self.fluid)
                 h_2_prim = PropsSI("H","P",p_2_guess,"Q", 0,self.fluid)
@@ -243,15 +248,17 @@ class ORC(object):
 
                 return T_7_prim - T_2_prim - self.T_pinch_ex_II
 
-            self.T_2 = least_squares(pitch_evap_II, x0=25.6 + 273.15, bounds=(273.15 + 20, self.T_7)).x[0]
+            self.T_2 = least_squares(pitch_evap_II, x0=10.1 + 273.15, bounds=(273.15, self.T_3 - self.T_surchauffe_3 - 1)).x[0] 
             self.h_2 = PropsSI("H","P",p_2_guess,"T",self.T_2,self.fluid)
 
             self.m_2 = self.m_HF*(self.h_7 - self.h_8)/(self.h_3 - self.h_2)
             self.m_tot = self.m_1 + self.m_2
             print("m_tot === ",self.m_tot)
+            print("T6 === ",self.T_6)
 
             # Etat 5 via pinch
             def pitch_cond(T5) : 
+                print("T5 === ",T5)
                 T_6_sat = self.T_6 + self.T_cd_subcool
                 h_5 = PropsSI("H","P",p_5_guess,"T",T5,self.fluid)
                 T_5_prim = PropsSI("T","P",p_5_guess,"Q", 1,self.fluid)
@@ -262,7 +269,7 @@ class ORC(object):
                 T_10_prim = PropsSI("T","P",self.p_CF,"H",h_10_prim,self.cold_fluid)
                 return T_5_prim - T_10_prim - self.T_pinch_cd
 
-            self.T_5 = least_squares(pitch_cond, x0=self.T_6 + 0.1, bounds=(self.T_6, 273.15 + 100)).x[0] # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PROBLEME DE BORNES ICI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            self.T_5 = least_squares(pitch_cond, x0=self.T_6 + 10, bounds=(self.T_6 + 0.1, 273.15 + 100)).x[0]
             self.h_5 = PropsSI("H","P",p_5_guess,"T",self.T_5,self.fluid)
 
             # Etat 3_prim
@@ -271,9 +278,6 @@ class ORC(object):
             self.s_prim_prim = PropsSI("S","P",p_5_guess,"Q", 1,self.fluid)
             self.x_3_prim_s = (self.s_3 - self.s_prim) / (self.s_prim_prim - self.s_prim)
             self.h_3_prime_s = (1 - self.x_3_prim_s) * PropsSI("H","P",p_5_guess,"Q",0,self.fluid) + self.x_3_prim_s * PropsSI("H","P",p_5_guess,"Q",1,self.fluid)
-            # print("h_3_prime_s === ",self.h_3_prime_s)
-            # self.h_3_prime_s = PropsSI("H","P",self.p_5,"S",self.s_3,self.fluid)
-            # print("h_3_prime_s_bis === ",self.h_3_prime_s)
             self.h_3_prime = self.h_3 - self.eta_is_T * (self.h_3 - self.h_3_prime_s)
             self.T_3_prime = PropsSI("T","P",p_5_guess,"H",self.h_3_prime,self.fluid)
 
@@ -285,36 +289,32 @@ class ORC(object):
             self.h_4_prime = self.h_4 - self.eta_is_T * (self.h_4 - self.h_4_prime_s)
             self.T_4_prime = PropsSI("T","P",p_5_guess,"H",self.h_4_prime,self.fluid)
 
-            # Pompe I
-            def T_out_pumpI(T1_guess, arg) :
-                T_6, p_5_guess, p_1_guess, fluid = arg
-                p_av = (p_1_guess + p_5_guess) / 2
-                rho_av = Scipy.integrate.quad(lambda x: PropsSI('D','P',p_av,'T',x,fluid),T_6,T1_guess)[0] / (T1_guess - T_6)
+        
+            ## FAIRE VIA ENTHALPIES
+            def vI(P):
+                return 1/PropsSI('D', 'H',(self.h_6 + self.h_1)/2,'P',P,self.fluid)
+            
+            vdp_variableI, _ = quad(vI, p_5_guess, p_1_guess)
+            
+            Eq1 = self.h_1 - self.h_6 - (vdp_variableI/self.eta_pump_1)
 
-                cp_average = Scipy.integrate.quad(lambda x : self.CP(x,p_av,fluid),T_6,T1_guess)[0] / (T1_guess - T_6)
-                return T1_guess - T_6 - (p_1_guess - p_5_guess) / (self.eta_pump_1 * cp_average*rho_av)
-            T1_bis = fsolve(T_out_pumpI, self.T_6 + 0.1, args = [self.T_6, p_5_guess, p_1_guess, self.fluid])[0]
 
-            # Pompe II
-            def T_out_pumpII(T2_guess, arg) :
-                T_1, p_1_guess, p_2_guess, fluid = arg
-                p_av = (p_1_guess + p_2_guess) / 2
-                rho_av = Scipy.integrate.quad(lambda x: PropsSI('D','P',p_av,'T',x,fluid),T_1,T2_guess)[0] / (T2_guess - T_1)
-
-                cp_average = Scipy.integrate.quad(lambda x : self.CP(x,p_av,fluid),T_1,T2_guess)[0] / (T2_guess - T_1)
-                return T2_guess - T_1 - (p_2_guess - p_1_guess) / (self.eta_pump_2 * cp_average * rho_av)
-            T2_bis = fsolve(T_out_pumpII, self.T_1 + 0.1, args = [self.T_1, p_1_guess, p_2_guess, self.fluid])[0]
+            def vII(P):
+                return 1/PropsSI('D', 'H',(self.h_2 + self.h_1)/2,'P',P,self.fluid)
+            
+            vdp_variableII, _ = quad(vII, p_1_guess, p_2_guess)
+            
+            Eq2 = self.h_2 - self.h_1 - (vdp_variableII/self.eta_pump_2)
+            
 
             # Etat 5
             First_eq = - self.h_5 + (self.h_4_prime*self.m_1 + self.m_2*self.h_3_prime)/self.m_tot
-            Second_eq = T1_bis - self.T_1
-            Third_eq = T2_bis - self.T_2
 
-            return First_eq, Second_eq, Third_eq
+            return First_eq, Eq1, Eq2
 
 
         # Résolution
-        self.p_1, self.p_2, self.p_5 = least_squares(cycle, x0=[self.p_1_guess, self.p_2_guess, self.p_5_guess], bounds = ([5000,5000,5000], [10**7,10**7,10**7])).x
+        self.p_1, self.p_2, self.p_5 = least_squares(cycle, x0=[self.p_1_guess, self.p_2_guess, self.p_5_guess], bounds = ([135323,5000,5000], [10**7,10**7,150865])).x
         print("p_1 === ",self.p_1)
         print("p_2 === ",self.p_2)
         print("p_5 === ",self.p_5)

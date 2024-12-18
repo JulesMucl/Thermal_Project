@@ -87,32 +87,6 @@ class ORC(object):
         return ( h_i - self.h_ref ) - self.T_ref * ( s_i - self.s_ref ) 
 
 
-    def CP_av(self, t1, t2, p1, p2, fluid):
-        """
-        Calcul de la capacité calorifique moyenne massique (cp) entre deux températures et deux pressions.
-
-        :param t1: Température de départ (en K)
-        :param t2: Température d'arrivée (en K)
-        :param p1: Pression de départ (en Pa)
-        :param p2: Pression d'arrivée (en Pa)
-        :return: Capacité calorifique moyenne massique (en J/(kg.K))
-        """
-        if t1 == t2:
-            raise ValueError("t1 et t2 ne peuvent pas être égaux, sinon division par zéro.")
-        
-        p = (p1 + p2) / 2  # Pression moyenne
-
-        try:
-            # Calcul de l'intégrale de cp entre t1 et t2
-            cp_integrale = intgr.quad(
-                lambda x: PropsSI('CPMASS', 'T', x, 'P', p, fluid),t1, t2)[0]
-            
-            # Capacité calorifique moyenne
-            cp_av = cp_integrale / np.abs(t2 - t1)
-            return cp_av
-        except Exception as e:
-            raise ValueError(f"Erreur lors du calcul de CP_av : {e}")
-
 
     def evaluate(self):
 
@@ -167,12 +141,15 @@ class ORC(object):
 
         # On pose les pressions en premier guess
         def cycle(T) :
-            print("pass")
             T1, T2, T5 = T
             self.T1_guess_plot.append(T1)
             self.T2_guess_plot.append(T2)
             self.T5_guess_plot.append(T5)
             self.n_iterations += 1
+            
+            print("T1 === ",T1)
+            print("T2 === ",T2)
+            print("T5 === ",T5)
 
             # Iteration sur p_1 via pitch
             def pitch_evap_I(p1) :
@@ -187,8 +164,6 @@ class ORC(object):
                 return T_8_prim - T_1_prim - self.T_pinch_ex_I
 
             solution = least_squares(pitch_evap_I, self.p_1_guess, bounds = (5000, 10**7))
-            print("p1")
-            print(solution.fun)
             self.p_1 = solution.x[0]
             self.p_4 = self.p_1
             self.h_1 = PropsSI("H","P",self.p_1,"T",T1,self.fluid)
@@ -215,6 +190,7 @@ class ORC(object):
             self.h_3 = PropsSI("H","T",self.T_3,"P",self.p_2,self.fluid)
             self.m_2 = self.m_HF*(self.h_7 - self.h_8)/(self.h_3 - self.h_2)
             self.m_tot = self.m_1 + self.m_2
+            print("m_tot === ",self.m_tot)
             # Etat 5 via pinch
             def pitch_cond(T6) :
                 T_6_sat = T6 + self.T_cd_subcool
@@ -230,8 +206,6 @@ class ORC(object):
 
 
             solution2 = least_squares(pitch_cond,  x0 = self.T_11+0.1, bounds=(self.T_11, T1))
-            print("T6 : ")
-            print(solution2.fun)
             self.T_6 = solution2.x[0]
             self.p_6 = PropsSI("P","T",self.T_6 + self.T_cd_subcool,"Q",1,self.fluid)
             self.p_5 = self.p_6
@@ -265,35 +239,8 @@ class ORC(object):
             
             Eq2 = self.h_2 - self.h_1 - (vdp_variableII/self.eta_pump_2)
             
-
-            # Pompe I
-            def T_out_pumpI(T1_guess, arg) :
-                T_6, p_5_guess, p_1_guess, fluid = arg
-                p_av = (p_1_guess + p_5_guess) / 2
-                rho_av = Scipy.integrate.quad(lambda x: PropsSI('D','P',p_av,'T',x,fluid),T_6,T1_guess)[0] / (T1_guess - T_6)
-
-                cp_average = Scipy.integrate.quad(lambda x : self.CP(x,p_av,fluid),T_6,T1_guess)[0] / (T1_guess - T_6)
-                return T1_guess - T_6 - (p_1_guess - p_5_guess) / (self.eta_pump_1 * rho_av*cp_average)
-            #T1_bis = fsolve(T_out_pumpI, self.T_6 +0.1, args = [self.T_6, self.p_5, self.p_1, self.fluid])[0]
             
-            # Pompe II
-            def T_out_pumpII(T2_guess, arg) :
-                T_1, p_1_guess, p_2_guess, fluid = arg
-                p_av = (p_1_guess + p_2_guess) / 2
-                rho_av = Scipy.integrate.quad(lambda x: PropsSI('D','P',p_av,'T',x,fluid),T_1,T2_guess)[0] / (T2_guess - T_1)
-
-                cp_average = Scipy.integrate.quad(lambda x : self.CP(x,p_av,fluid),T_1,T2_guess)[0] / (T2_guess - T_1)
-                return T2_guess - T_1 - (p_2_guess - p_1_guess) / (self.eta_pump_2 * rho_av*cp_average)
-            #T2_bis = fsolve(T_out_pumpII, T1 + 0.1, args = [T1, self.p_1, self.p_2, self.fluid])[0]
-
-            # Etat 5
             First_eq = self.h_4_prime*self.m_1 + self.m_2*self.h_3_prime - self.m_tot*self.h_5
-            #Second_eq = T1_bis - T1
-            #Third_eq = T2_bis - T2
-            print("p1 === ",self.p_1)
-            print("p2 === ",self.p_2)
-            print("p5 === ",self.p_5)
-
             return First_eq, Eq1, Eq2
 
         # Initial guess
@@ -306,9 +253,6 @@ class ORC(object):
         self.T1 = solution.x[0]
         self.T2 = solution.x[1]
         self.T5 = solution.x[2]
-        print("T1 === ",self.T1)
-        print("T2 === ",self.T2)
-        print("T5 === ",self.T5)
 
 
         # Calcul des états
@@ -415,10 +359,6 @@ class ORC(object):
         self.s_4_prime = PropsSI("S","P",self.p_5,"H",self.h_4_prime,self.fluid)
         self.x_4_prime = PropsSI("Q","P",self.p_5,"H",self.h_4_prime,self.fluid)
         self.e_4_prime = self.exergie(self.h_4_prime,self.s_4_prime)
-        print("#"*50)
-        print("p1 === ",self.p_1)
-        print("p2 === ",self.p_2)
-        print("p5 === ",self.p_5)
 
         # Plot evolution des valeurs de T1, T2 et T5
         self.pas = np.linspace(1,self.n_iterations + 1,self.n_iterations)

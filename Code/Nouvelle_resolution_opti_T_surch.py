@@ -165,12 +165,9 @@ class ORC(object):
         self.n = 0
         def opti_T_surchauffe_sousref(T) : 
             T_surchauffe_3, T_surchauffe_4, T_sousref = T
-            print("T_surchauffe_3 === ",T_surchauffe_3)
-            print("T_surchauffe_4 === ",T_surchauffe_4)
-            print("T_sousref === ",T_sousref)
 
-            self.T_4 = self.T_8 - T_surchauffe_4
-            self.T_3 = self.T_7 - T_surchauffe_3
+            T_4 = self.T_8 - T_surchauffe_4
+            T_3 = self.T_7 - T_surchauffe_3
             
 
             # On pose les pressions en premier guess
@@ -186,17 +183,18 @@ class ORC(object):
                     h_1 = PropsSI("H","P",p1,"T",T1,self.fluid)
                     T_1_prim = PropsSI("T","P",p1,"Q", 0,self.fluid)
                     h_1_prim = PropsSI("H","P",p1,"Q", 0,self.fluid)
-                    h_4 = PropsSI("H","T",self.T_4,"P",p1,self.fluid)
+                    h_4 = PropsSI("H","T",T_4,"P",p1,self.fluid)
 
                     m_1 = self.m_HF*(self.h_8 - self.h_9)/(h_4 - h_1)
                     h_8_prim = self.h_8 - m_1/self.m_HF*(h_4 - h_1_prim)
                     T_8_prim = PropsSI("T","P",self.p_7,"H",h_8_prim,self.hot_fluid)
                     return T_8_prim - T_1_prim - self.T_pinch_ex_I
                 
-                self.p_1 = fsolve(pitch_evap_I, self.p_1_guess)[0]
+                solution = least_squares(pitch_evap_I, self.p_1_guess, bounds = (5000, 10**7))
+                self.p_1 = solution.x[0]
                 self.p_4 = self.p_1
                 self.h_1 = PropsSI("H","P",self.p_1,"T",T1,self.fluid)
-                self.h_4 = PropsSI("H","T",self.T_4,"P",self.p_4,self.fluid)
+                self.h_4 = PropsSI("H","T",T_4,"P",self.p_4,self.fluid)
                 self.m_1 = self.m_HF*(self.h_8 - self.h_9)/(self.h_4 - self.h_1)
                 # Iteration sur T_2 via pitch
 
@@ -204,7 +202,7 @@ class ORC(object):
                     h_2 = PropsSI("H","P",p2,"T",T2,self.fluid)
                     T_2_prim = PropsSI("T","P",p2,"Q", 0,self.fluid)
                     h_2_prim = PropsSI("H","P",p2,"Q", 0,self.fluid)
-                    h_3 = PropsSI("H","T",self.T_3,"P",p2,self.fluid)
+                    h_3 = PropsSI("H","T",T_3,"P",p2,self.fluid)
 
                     m_2 = self.m_HF*(self.h_7 - self.h_8)/(h_3 - h_2)
 
@@ -216,7 +214,7 @@ class ORC(object):
                 self.p_2 = fsolve(pitch_evap_II, self.p_2_guess)[0]
                 self.p_3 = self.p_2
                 self.h_2 = PropsSI("H","P",self.p_2,"T",T2,self.fluid)
-                self.h_3 = PropsSI("H","T",self.T_3,"P",self.p_2,self.fluid)
+                self.h_3 = PropsSI("H","T",T_3,"P",self.p_2,self.fluid)
                 self.m_2 = self.m_HF*(self.h_7 - self.h_8)/(self.h_3 - self.h_2)
                 self.m_tot = self.m_1 + self.m_2
                 # Etat 5 via pinch
@@ -240,45 +238,15 @@ class ORC(object):
                 self.m_dot_CF = self.m_tot*(self.h_5 - self.h_6)/(self.h_10 - self.h_11)
         
                 # Etat 3_prim
-                self.s_3 = PropsSI("S","P",self.p_3,"T",self.T_3,self.fluid)
-                self.s_prim = PropsSI("S","P",self.p_5,"Q", 0,self.fluid)
-                self.s_prim_prim = PropsSI("S","P",self.p_5,"Q", 1,self.fluid)
-                self.x_3_prim_s = (self.s_3 - self.s_prim) / (self.s_prim_prim - self.s_prim)
-                self.h_3_prime_s = (1 - self.x_3_prim_s) * PropsSI("H","P",self.p_5,"Q",0,self.fluid) + self.x_3_prim_s * PropsSI("H","P",self.p_5,"Q",1,self.fluid)
-                # print("h_3_prime_s === ",self.h_3_prime_s)
-                # self.h_3_prime_s = PropsSI("H","P",self.p_5,"S",self.s_3,self.fluid)
-                # print("h_3_prime_s_bis === ",self.h_3_prime_s)
+                self.s_3 = PropsSI("S","P",self.p_2,"T",T_3,self.fluid)
+                self.h_3_prime_s = PropsSI("H","P",self.p_6,"S",self.s_3,self.fluid)
                 self.h_3_prime = self.h_3 - self.eta_is_T * (self.h_3 - self.h_3_prime_s)
-                self.T_3_prime = PropsSI("T","P",self.p_5,"H",self.h_3_prime,self.fluid)
-
+                
                 # Etat 4_prim
-                self.s_4 = PropsSI("S","P",self.p_4,"T",self.T_4,self.fluid)
-                self.x_4_prim_s = (self.s_4 - self.s_prim) / (self.s_prim_prim - self.s_prim)
-                self.h_4_prime_s = (1 - self.x_4_prim_s) * PropsSI("H","P",self.p_5,"Q",0,self.fluid) + self.x_4_prim_s * PropsSI("H","P",self.p_5,"Q",1,self.fluid)
-
+                self.s_4 = PropsSI("S","P",self.p_1,"T",T_4,self.fluid)
+                self.h_4_prime_s = PropsSI("H","P",self.p_6,"S",self.s_4,self.fluid)
                 self.h_4_prime = self.h_4 - self.eta_is_T * (self.h_4 - self.h_4_prime_s)
-                self.T_4_prime = PropsSI("T","P",self.p_5,"H",self.h_4_prime,self.fluid)
                 
-                # # Pompe I
-                # def T_out_pumpI(T1_guess, arg) :
-                #     T_6, p_5_guess, p_1_guess, fluid = arg
-                #     p_av = (p_1_guess + p_5_guess) / 2
-                #     rho_av = Scipy.integrate.quad(lambda x: PropsSI('D','P',p_av,'T',x,fluid),T_6,T1_guess)[0] / (T1_guess - T_6)
-
-                #     cp_average = Scipy.integrate.quad(lambda x : self.CP(x,p_av,fluid),T_6,T1_guess)[0] / (T1_guess - T_6)
-                #     return T1_guess - T_6 - (p_1_guess - p_5_guess) / (self.eta_pump_1 * rho_av*cp_average)
-                # T1_bis = fsolve(T_out_pumpI, self.T_6 +0.1, args = [self.T_6, self.p_5, self.p_1, self.fluid])[0]
-                
-                # # Pompe II
-                # def T_out_pumpII(T2_guess, arg) :
-                #     T_1, p_1_guess, p_2_guess, fluid = arg
-                #     p_av = (p_1_guess + p_2_guess) / 2
-                #     rho_av = Scipy.integrate.quad(lambda x: PropsSI('D','P',p_av,'T',x,fluid),T_1,T2_guess)[0] / (T2_guess - T_1)
-
-                #     cp_average = Scipy.integrate.quad(lambda x : self.CP(x,p_av,fluid),T_1,T2_guess)[0] / (T2_guess - T_1)
-                #     return T2_guess - T_1 - (p_2_guess - p_1_guess) / (self.eta_pump_2 * rho_av*cp_average)
-                # T2_bis = fsolve(T_out_pumpII, T1 + 0.1, args = [T1, self.p_1, self.p_2, self.fluid])[0]
-                        ## FAIRE VIA ENTHALPIES
                 def vI(P):
                     return 1/PropsSI('D', 'H',(self.h_6 + self.h_1)/2,'P',P,self.fluid)
                 
@@ -297,8 +265,6 @@ class ORC(object):
 
                 # Etat 5
                 First_eq = - self.h_5 + (self.h_4_prime*self.m_1 + self.m_2*self.h_3_prime)/self.m_tot
-                #Second_eq = T1_bis - T1
-                #Third_eq = T2_bis - T2
 
                 return First_eq, Eq1, Eq2
 
@@ -309,9 +275,6 @@ class ORC(object):
 
             # Résolution
             self.T1, self.T2, self.T5 = least_squares(cycle, [T_1_guess, T_2_guess, T_5_guess], bounds = ([273.15 + 20,273.15 + 20,self.T_11],[self.T_8,self.T_7,273.15 + 120]), max_nfev=600).x
-            print("T1 === ",self.T1)
-            print("T2 === ",self.T2)
-            print("T5 === ",self.T5)
 
 
             # Calcul des états
@@ -319,7 +282,7 @@ class ORC(object):
                 h_1 = PropsSI("H","P",p1,"T",self.T1,self.fluid)
                 T_1_prim = PropsSI("T","P",p1,"Q", 0,self.fluid)
                 h_1_prim = PropsSI("H","P",p1,"Q", 0,self.fluid)
-                h_4 = PropsSI("H","T",self.T_4,"P",p1,self.fluid)
+                h_4 = PropsSI("H","T",T_4,"P",p1,self.fluid)
 
                 m_1 = self.m_HF*(self.h_8 - self.h_9)/(h_4 - h_1)
 
@@ -335,9 +298,9 @@ class ORC(object):
             self.e_1 = self.exergie(self.h_1,self.s_1)
 
             self.p_4 = self.p_1
-            self.h_4 = PropsSI("H","T",self.T_4,"P",self.p_4,self.fluid)
-            self.s_4 = PropsSI("S","T",self.T_4,"P",self.p_4,self.fluid)
-            self.x_4 = PropsSI("Q","T",self.T_4,"P",self.p_4,self.fluid)
+            self.h_4 = PropsSI("H","T",T_4,"P",self.p_4,self.fluid)
+            self.s_4 = PropsSI("S","T",T_4,"P",self.p_4,self.fluid)
+            self.x_4 = PropsSI("Q","T",T_4,"P",self.p_4,self.fluid)
             self.e_4 = self.exergie(self.h_4,self.s_4)
 
             self.m_1 = self.m_HF*(self.h_8 - self.h_9)/(self.h_4 - self.h_1)
@@ -346,7 +309,7 @@ class ORC(object):
                 h_2 = PropsSI("H","P",p2,"T",self.T2,self.fluid)
                 T_2_prim = PropsSI("T","P",p2,"Q", 0,self.fluid)
                 h_2_prim = PropsSI("H","P",p2,"Q", 0,self.fluid)
-                h_3 = PropsSI("H","T",self.T_3,"P",p2,self.fluid)
+                h_3 = PropsSI("H","T",T_3,"P",p2,self.fluid)
 
                 m_2 = self.m_HF*(self.h_7 - self.h_8)/(h_3 - h_2)
 
@@ -362,9 +325,9 @@ class ORC(object):
             self.e_2 = self.exergie(self.h_2,self.s_2)
 
             self.p_3 = self.p_2
-            self.h_3 = PropsSI("H","T",self.T_3,"P",self.p_3,self.fluid)
-            self.s_3 = PropsSI("S","T",self.T_3,"P",self.p_3,self.fluid)
-            self.x_3 = PropsSI("Q","T",self.T_3,"P",self.p_3,self.fluid)
+            self.h_3 = PropsSI("H","T",T_3,"P",self.p_3,self.fluid)
+            self.s_3 = PropsSI("S","T",T_3,"P",self.p_3,self.fluid)
+            self.x_3 = PropsSI("Q","T",T_3,"P",self.p_3,self.fluid)
             self.e_3 = self.exergie(self.h_3,self.s_3)
 
             self.m_2 = self.m_HF*(self.h_7 - self.h_8)/(self.h_3 - self.h_2)
@@ -425,8 +388,10 @@ class ORC(object):
             self.n += 1
             return - self.Pe
 
-        self.T_surchauffe_3, self.T_surchauffe_4, self.T_sousref = minimize(opti_T_surchauffe_sousref, x0=(10,10,10), bounds=[(7, 20), (7,20), (7,20)], method='TNC').x
+        self.T_surchauffe_3, self.T_surchauffe_4, self.T_sousref = minimize(opti_T_surchauffe_sousref, x0=(10,10,1), bounds=[(1, 20), (1,20), (1,20)], method='TNC').x
 
+        T_3 = self.T_7 - self.T_surchauffe_3
+        T_4 = self.T_8 - self.T_surchauffe_4
         print("#"*100)
         print("T_surchauffe_3 === ",self.T_surchauffe_3)
         print("T_surchauffe_4 === ",self.T_surchauffe_4)
@@ -514,7 +479,7 @@ class ORC(object):
             plt.plot(s_vap, T_vap, linestyle='--', color='blue')
 
             # Ajout courbes cycle
-            T_23 = np.linspace(self.T2, self.T_3, 100)
+            T_23 = np.linspace(self.T2, T_3, 100)
             s_23 = []
             for T in T_23:
                 if (T != PropsSI("T", "P", self.p_2, "Q", 1, self.fluid)):
@@ -523,7 +488,7 @@ class ORC(object):
                     s_23.append(PropsSI('S', 'T', T, 'Q', 0, self.fluid) / 1000)
             plt.plot(s_23, T_23, color='black')
 
-            T_14 = np.linspace(self.T1, self.T_4, 100)
+            T_14 = np.linspace(self.T1, T_4, 100)
             s_14 = []
             for T in T_14:
                 if T != PropsSI("T", "P", self.p_1, "Q", 1, self.fluid):
@@ -543,11 +508,11 @@ class ORC(object):
 
             plt.plot([self.s_1/1000, self.s_2/1000], [self.T1, self.T2], color='black')
             plt.plot([self.s_6/1000, self.s_1/1000], [self.T_6, self.T1], color='black')
-            plt.plot([self.s_3/1000, self.s_4/1000], [self.T_3, self.T_4], color='black')
-            plt.plot([self.s_4/1000, self.s_5/1000], [self.T_4, self.T5], color='black')
+            plt.plot([self.s_3/1000, self.s_4/1000], [T_3, T_4], color='black')
+            plt.plot([self.s_4/1000, self.s_5/1000], [T_4, self.T5], color='black')
 
             s = [self.s_1/1000, self.s_2/1000, self.s_3/1000, self.s_4/1000, self.s_5/1000, self.s_6/1000]
-            T = [self.T1, self.T2, self.T_3, self.T_4, self.T5, self.T_6]
+            T = [self.T1, self.T2, T_3, T_4, self.T5, self.T_6]
             labels = ["1", "2", "3", "4", "5", "6"]
             for i in range(len(labels)):
                 plt.scatter(s[i], T[i], color='gray')
